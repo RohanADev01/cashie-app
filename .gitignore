@@ -1,0 +1,4 @@
+# Ignore config
+Config.swift
+app/Cashie/App/Config.swift
+cashie-app-store-package/app/Cashie/App/Config.swift

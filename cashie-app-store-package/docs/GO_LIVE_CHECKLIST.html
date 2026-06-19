@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cashie - Go Live Checklist</title>
+<style>
+  :root { --line:#000; --mut:#444; }
+  * { box-sizing:border-box; }
+  html,body { background:#fff; color:#000; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    max-width: 820px; margin: 0 auto; padding: 40px 24px 120px; line-height: 1.5;
+  }
+  header { border-bottom: 3px solid var(--line); padding-bottom: 14px; margin-bottom: 8px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.3px; }
+  .sub { color: var(--mut); font-size: 13px; }
+  .bar { height: 14px; border: 2px solid #000; margin: 18px 0 6px; }
+  .bar > span { display:block; height:100%; background:#000; width:0; }
+  .count { font-size: 12px; color: var(--mut); margin-bottom: 26px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;
+    border-bottom: 1px solid #000; padding-bottom: 6px; margin: 34px 0 10px;
+  }
+  h2.done-section { background:#000; color:#fff; padding: 8px 10px; border:none; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px dotted #bbb; }
+  li:last-child { border-bottom: none; }
+  input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; accent-color: #000; flex: 0 0 auto; }
+  label { cursor: pointer; }
+  label.done { text-decoration: line-through; color: var(--mut); }
+  .tag { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; border:1px solid #000;
+         padding: 1px 5px; margin-left: 6px; vertical-align: 1px; white-space: nowrap; }
+  .tag.repo { background:#000; color:#fff; }
+  .tag.mac { background:#fff; color:#000; }
+  .k { font-family: ui-monospace, "SF Mono", Menlo, monospace; background:#f0f0f0; padding: 0 4px; border:1px solid #ccc; }
+  .note { font-size: 12px; color: var(--mut); border-left: 3px solid #000; padding: 6px 10px; margin: 8px 0 0; background:#fafafa; }
+  .controls { margin: 16px 0 0; }
+  button { font: inherit; font-size: 12px; border: 2px solid #000; background:#fff; padding: 6px 12px; cursor:pointer; }
+  button:hover { background:#000; color:#fff; }
+  @media print { input,button{ -webkit-appearance:none; } .controls{display:none;} body{padding:0;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cashie - Go Live Checklist</h1>
+  <div class="sub">Updated 2026-06-08. Items tagged <span class="tag repo">DONE</span> are complete in the repo. Items tagged <span class="tag mac">MAC</span> need a real Mac, Apple account, or device. Full detail in GO_LIVE_RUNBOOK.md, SECURITY_AUDIT.md, and IMPLEMENTATION_PLAN_identity_paywall_analytics.md (identity / hard paywall / analytics / secure Quick Log keys).</div>
+  <div class="sub" style="background:#fff6d6;border:1px solid #e6c84a;border-radius:8px;padding:10px 12px;margin-top:10px"><strong>Superseded note (updated 2026-06-13):</strong> subscriptions are now <strong>native StoreKit 2</strong> - the RevenueCat SDK, its <code>purchases-ios</code> SPM dependency, and <code>Package.resolved</code> were removed. Checklist items mentioning the RevenueCat key/dashboard/<code>REVENUECAT_*</code> secrets no longer apply. The Quick Log mint entitlement check has been re-implemented on Apple's <strong>App Store Server API</strong> (set the App Store Connect API key edge secrets to enable it). The only purchase task is creating the <code>cashie_pro_*</code> products in App Store Connect. <strong>GO_LIVE_RUNBOOK.md</strong> (sections 2 and 6c) is authoritative.</div>
+</header>
+
+<div class="bar"><span id="fill"></span></div>
+<div class="count" id="count">0 of 0 complete</div>
+<div class="controls"><button id="reset">Reset my ticks</button> <button id="print">Print</button></div>
+
+<h2 class="done-section">0 &middot; Done in this build (in the repo)</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Full security audit passed: no malware, backdoor, tracking, or data exfiltration found.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Crash-safety audit passed: no reachable crashes; money and progress math is divide-by-zero safe.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Financial data encrypted at rest (<span class="k">.completeFileProtection</span>) and excluded from iCloud / iTunes backups.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Privacy lock hardened: fails closed on a real device; veils the app-switcher snapshot on <span class="k">willResignActive</span>.</label></li>
+  <li><input type="checkbox" data-done="1"><label>CSV export written with file protection.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Demo / sample data gated to dev only: production first launch starts empty.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Dev launch arguments (<span class="k">-resetStore</span>, <span class="k">-startAt</span>, ...) compiled out of release builds.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Live-sync network path hardened (no force-unwrap); stays dormant until the anon key is added.</label></li>
+  <li><input type="checkbox" data-done="1"><label>App name is "Cashie" everywhere (splash, lock, Face ID, Pro, badges); bundle id (com.cashie.app), scheme, and project are also "Cashie". Only the on-disk repo folder is still "cashly" (dev-machine only).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Debug + Release builds succeed; Release binary launches clean on the simulator.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Backend per-user tables reset to 0 rows (clean production slate).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Supabase advisor reviewed: only the 3 documented-intentional notes remain.</label></li>
+  <li><input type="checkbox" data-done="1"><label>No <span class="k">service_role</span> key in app or repo; <span class="k">anon</span> has zero data access (RLS verified).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Full source backup taken before changes (<span class="k">backups/cashly_pre_prod_*.tar.gz</span>).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Quick Log automation (native path) shipped: App Intents <span class="k">Log Expense</span> (silent, logs with the app closed) + <span class="k">Open Quick Log</span>, auto-published to Shortcuts &amp; Siri; <span class="k">cashie://</span> deep links; background logs persist to the local store + sync outbox.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Sign in with Apple removed from onboarding (no login). App is local-first / anonymous; <span class="k">SignInScreen</span> deleted; Welcome and "Let's go" route to name entry.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Anonymous Supabase identity implemented (<span class="k">AuthClient.swift</span>): silent anon sign-in + token refresh, cached in Keychain, wired into <span class="k">LiveSupabaseService.tokenProvider</span>. PostHog <span class="k">distinct_id</span> shares that one <span class="k">auth.uid()</span>.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Hard paywall: whole app is Pro-gated; entitlement re-checked on every launch + foreground (expiry bounces to paywall); the deep-link / App-Intent path into the main app is gated behind Pro (<span class="k">presentQuickLog</span>).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Onboarding resume is local (LocalStore <span class="k">OnboardingProgress</span>): mid-quiz restarts the quiz, finished stages resume in place, reaching the paywall always returns to it. Only marketing data (quiz answers, archetype, traits, chips) is synced to <span class="k">profiles</span>, once at quiz completion.</label></li>
+  <li><input type="checkbox" data-done="1"><label>PostHog funnel analytics (hand-rolled REST, no SDK, no session replay): <span class="k">onboarding_step_reached</span>, <span class="k">quiz_completed</span>, <span class="k">purchase_*</span>, <span class="k">app_opened</span>, <span class="k">transaction_logged</span>. Dashboard "Cashie Onboarding &amp; Usage" created (4 insights).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Quick Log "functional gap" fixed: the app now fetches a <strong>server-minted, Pro-verified</strong> key. Edge Function <span class="k">mint-quick-log-key</span> verifies the JWT, confirms the subscription via Apple's <em>App Store Server API</em>, then mints via the service-role-only <span class="k">issue_quick_log_key_for(uid)</span> RPC (deployed).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Rate limiting + anti-abuse deployed: Edge Function <span class="k">quick-log</span> &rarr; <span class="k">quick_log_guarded</span> (per-IP 60/min, per-key 10/min + 200/day, insert-only). Direct <span class="k">quick_log()</span> and <span class="k">issue_quick_log_key()</span> revoked from <span class="k">anon</span>/<span class="k">authenticated</span> (callable by no external role); Supabase security advisors clean.</label></li>
+</ul>
+
+<h2>1 &middot; Out of the VM</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Clean simulator build confirmed (Debug + Release).</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Move the project to a real Mac (zip excluding <span class="k">build/</span>, or private git). Open <span class="k">Cashie.xcodeproj</span> in Xcode 15.4+.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Set the signing Team (Automatic) under Signing &amp; Capabilities.</label></li>
+</ul>
+
+<h2>2 &middot; Apple Developer (one time)</h2>
+<ul>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Apple Developer Program active.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> App ID <span class="k">com.cashie.app</span> registered.</label></li>
+  <li><input type="checkbox" data-done="1"><label>No special entitlement needed for identity: the anonymous session uses a standard (non-synchronized) Keychain item. Deliberate tradeoff: deleting the app starts a fresh anonymous user (local data lost; a restored Pro purchase still works). To make data survive delete/reinstall, later switch the auth token to an iCloud Keychain item (<span class="k">kSecAttrSynchronizable</span>) and enable Keychain Sharing.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> App Store Connect app record created (Finance category, privacy policy URL).</label></li>
+</ul>
+
+<h2>3 &middot; Supabase</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Schema / RLS / realtime confirmed on the dev project.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Security advisor reviewed; only the documented intentional notes remain.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Paste the anon key into <span class="k">Config.supabaseAnonKey</span>. Keep <span class="k">Config.swift</span> out of public git.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Enable the <strong>Anonymous</strong> sign-ins provider in Supabase (Authentication &rarr; Providers &rarr; Anonymous). No Apple provider needed. <strong>Nothing live-syncs until this is on.</strong></label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Enable <strong>Attack Protection / CAPTCHA</strong> on sign-ups (Authentication &rarr; settings) to stop scripted anonymous-account creation, and keep the default auth rate limits. This is the main abuse vector of a public anon key.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> (Quick Log only) Set the App Store Connect API key Edge Function secrets <span class="k">APPSTORE_ISSUER_ID</span>, <span class="k">APPSTORE_KEY_ID</span>, <span class="k">APPSTORE_PRIVATE_KEY</span> (the <code>.p8</code> contents). Without these, <span class="k">mint-quick-log-key</span> returns <span class="k">server_misconfigured</span> and no keys can be issued.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Migrations applied + Edge Functions deployed on the dev project: <span class="k">mint-quick-log-key</span> (verify_jwt on) and <span class="k">quick-log</span> (verify_jwt off, x-api-key auth), plus <span class="k">quick_log_guarded</span> / <span class="k">quick_log_rate</span> / <span class="k">issue_quick_log_key_for</span> and the marketing columns on <span class="k">profiles</span>.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> For a separate PROD project: re-run all migrations, deploy both Edge Functions, set their secrets, enable Anonymous + CAPTCHA, then re-check the advisor.</label></li>
+</ul>
+<div class="note">No <span class="k">service_role</span> key anywhere in the app or git (it is auto-injected into Edge Functions only). Anon has zero data access (RLS). The two privileged RPCs are callable by no external role.</div>
+
+<h2>4 &middot; Identity &amp; sync (anonymous, no login)</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Offline-first verified: app fully usable with no network; writes queue and flush on reconnect.</label></li>
+  <li><input type="checkbox" data-done="1"><label><span class="k">AuthClient.swift</span> implemented (the planned SupabaseAuth): anonymous sign-in (<span class="k">/auth/v1/signup</span>) + token refresh, cached in Keychain; token provider wired into <span class="k">LiveSupabaseService.makeIfConfigured</span>. No UI, no Apple.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> On a device, confirm a fresh install creates one row in <span class="k">auth.users</span>, that <span class="k">profiles.user_id == auth.uid()</span>, and that writes sync once the anon key + provider are live.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> <strong>Decide the identity model.</strong> As built (standard Keychain) identity is <strong>per-install</strong>: each device is a separate anonymous user, so there is <strong>no cross-device sync and no delete/reinstall restore</strong> (a restored Pro purchase still works; transaction history does not return). Accept this, OR upgrade the auth token to a synchronized iCloud Keychain item (section 2) to get the same uid across devices + reinstalls.</label></li>
+</ul>
+<div class="note">No Sign in with Apple. Identity is a silent Supabase anonymous user keyed to a device-local Keychain credential. Subscriptions are native StoreKit 2 (no RevenueCat); the <span class="k">pro</span> entitlement comes straight from Apple's <span class="k">Transaction.currentEntitlements</span>.</div>
+
+<h2>5 &middot; Subscriptions (native StoreKit 2)</h2>
+<ul>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Create the <strong>four</strong> auto-renewable products in App Store Connect (one "Cashie Pro" group), IDs matching the app, <strong>NO trial</strong>: <span class="k">cashie_pro_monthly</span> $9.99, <span class="k">cashie_pro_yearly</span> $79.99, <span class="k">cashie_pro_yearly_mid</span> $35.88, <span class="k">cashie_pro_yearly_special</span> $23.88.</label></li>
+  <li><input type="checkbox" data-done="1"><label>No RevenueCat / entitlement dashboard / SDK key - the <span class="k">pro</span> entitlement is read from Apple's <span class="k">Transaction.currentEntitlements</span> (<span class="k">StoreKitService</span>).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Funnel built: full price first ($79.99 yearly preselected / $9.99 monthly); the rescue products surface only at exit-intent - $35.88, then $23.88 on a later open, then locked at full price. See <span class="k">pricing-and-paywall-optimization-plan.md</span>.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Sandbox tester: purchase + restore verified; paywall gates correctly; both rescue offers reachable + purchasable on device.</label></li>
+  <li><input type="checkbox" data-done="1"><label><strong>Done:</strong> the Quick Log <span class="k">mint-quick-log-key</span> Edge Function now verifies Pro via Apple's <strong>App Store Server API</strong> (RevenueCat removed). To enable minting in prod, set the App Store Connect API key edge secrets (GO_LIVE_RUNBOOK &sect;6c); it fail-closes until then.</label></li>
+</ul>
+
+<h2>6 &middot; Quick Log Shortcuts (per-user API key)</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Backend deployed + tested on dev: <span class="k">quick_log_keys</span>, the Pro-gated <span class="k">mint-quick-log-key</span> Edge Function, and the rate-limited <span class="k">quick-log</span> Edge Function (<span class="k">quick_log_guarded</span>).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Native path shipped (no key, no login): App Intents + <span class="k">cashie://</span> deep links log via Back Tap / Action Button / Siri / NFC. The API-key path below adds true app-closed, server-side logging.</label></li>
+  <li><input type="checkbox" data-done="1"><label>App fetches a <strong>server-minted, Pro-verified</strong> key (<span class="k">AppContainer.quickLogKey</span> &rarr; <span class="k">mint-quick-log-key</span>), caches it in Keychain, and shows it in <span class="k">QuickLogKeyCard</span> with copy + "Reset key". This closes the functional gap (the copied key is registered, so the endpoint accepts it).</label></li>
+  <li><input type="checkbox" data-done="1"><label>The <span class="k">quick-log</span> Edge Function enforces per-key (10/min, 200/day) + per-IP (60/min) limits and forwards to the insert-only RPC; the shared shortcut carries only the function URL + <span class="k">x-api-key</span> (not the anon key).</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Build + publish the iCloud "Cashie Quick Log" Shortcut: POST to <span class="k">https://&lt;ref&gt;.functions.supabase.co/quick-log</span>, header <span class="k">x-api-key</span> (captured via an import question), JSON body <span class="k">{amount, merchant, category, note}</span>.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Wire the published iCloud link into <span class="k">QuickLogKeyCard</span>'s <span class="k">importShortcutURL</span> (currently a placeholder).</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Trigger set up: Back Tap triple-tap (and/or Action Button / NFC).</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Fire it: spend lands in the right account and appears live (<span class="k">source = quicklog</span>); a random/fake key returns <span class="k">unauthorized</span>.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Tap "Reset key" in the app; confirm the old key now returns <span class="k">unauthorized</span> and the new one works.</label></li>
+</ul>
+<div class="note">"After Apple Pay" has no native Shortcuts trigger. Use Back Tap, Action Button, or an NFC tag tap as the realistic equivalent.</div>
+
+<h2>7 &middot; Analytics (PostHog)</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Hand-rolled REST analytics (<span class="k">Analytics.swift</span>): buffered offline outbox, no SDK, no session replay; <span class="k">distinct_id == auth.uid()</span>.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Events emitted: <span class="k">onboarding_step_reached</span>, <span class="k">quiz_completed</span>, <span class="k">purchase_started/completed</span>, <span class="k">quick_log_key_minted</span>, <span class="k">app_opened</span>, <span class="k">transaction_logged</span>.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Dashboard "Cashie Onboarding &amp; Usage" created (project 459218): onboarding funnel, step reach, DAU / app opens, spends logged.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Paste the PostHog <strong>project</strong> key (<span class="k">phc_...</span>) into <span class="k">Config.postHogAPIKey</span> and confirm <span class="k">postHogHost</span> region. Until then analytics is a no-op.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> After a TestFlight session, confirm events arrive and the dashboard populates.</label></li>
+</ul>
+<div class="note">The PostHog project key is a public, write-only key (safe to ship). It collects product-usage data only (no IDFA, no ad tracking); declare it under App Privacy (section 8).</div>
+
+<h2>8 &middot; Security &amp; secrets</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Only <strong>public</strong> client keys live in <span class="k">Config.swift</span> (Supabase anon/publishable key, PostHog write key). They are expected to be extractable from any IPA; protection is server-side (RLS, Pro-gated mint, Apple receipts, rate limits).</label></li>
+  <li><input type="checkbox" data-done="1"><label>Sensitive secrets are server-side only: the App Store Connect API key (<span class="k">APPSTORE_PRIVATE_KEY</span> + issuer/key IDs, Edge secrets) and <span class="k">SUPABASE_SERVICE_ROLE_KEY</span> (auto-injected into Edge Functions). Neither is in the app or repo.</label></li>
+  <li><input type="checkbox" data-done="1"><label>Privileged RPCs <span class="k">quick_log</span> + <span class="k">issue_quick_log_key</span> revoked from <span class="k">anon</span>/<span class="k">authenticated</span>; minting is service-role-only and Pro-gated; security advisors clean.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Keep <span class="k">Config.swift</span> out of public git; rotate the Supabase anon / PostHog keys if ever pushed to a public repo.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Enable CAPTCHA / Attack Protection on Supabase auth (section 3) against scripted anonymous sign-ups. Optional stronger gate later: Apple App Attest before minting.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> App Privacy (App Store Connect) + <span class="k">PrivacyInfo.xcprivacy</span> declare: usage/analytics data collected (PostHog), <strong>not</strong> used for tracking; required-reason APIs.</label></li>
+</ul>
+
+<h2>9 &middot; Device, TestFlight, App Store</h2>
+<ul>
+  <li><input type="checkbox" data-done="1"><label>Dev hooks (<span class="k">-syncSelfTest</span> and all reset/jump args) are DEBUG-only, out of release.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Add a <span class="k">PrivacyInfo.xcprivacy</span> manifest in Xcode: now declares <strong>usage/analytics data collected</strong> (PostHog) but <strong>not</strong> used for tracking (no ATT prompt needed), plus required-reason APIs. Keep the App Privacy nutrition label in sync (section 8).</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Run on a real iPhone; trust the developer profile; crash-free pass over every screen.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Archive (Release), upload to App Store Connect, validate on a clean device via TestFlight.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Listing complete: screenshots, description, keywords, App Privacy, IAP attached.</label></li>
+  <li><input type="checkbox"><label><span class="tag mac">MAC</span> Submit for review with a demo account in the notes.</label></li>
+</ul>
+
+<script>
+  var KEY = "cashly_golive_checks_v2";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  boxes.forEach(function(b,i){ b.dataset.i = i; });
+  function isDone(b){ return b.dataset.done === "1"; }
+  function load(){ try { return JSON.parse(localStorage.getItem(KEY)||"{}"); } catch(e){ return {}; } }
+  function save(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+  var state = load();
+  function paint(){
+    var done = 0;
+    boxes.forEach(function(b){
+      var on = isDone(b) ? true : !!state[b.dataset.i];
+      b.checked = on;
+      if (isDone(b)) b.disabled = true;
+      b.nextElementSibling.classList.toggle('done', on);
+      if (on) done++;
+    });
+    document.getElementById('count').textContent = done + " of " + boxes.length + " complete";
+    document.getElementById('fill').style.width = (boxes.length ? (done/boxes.length*100) : 0) + "%";
+  }
+  boxes.forEach(function(b){
+    if (isDone(b)) return;
+    b.addEventListener('change', function(){ state[b.dataset.i] = b.checked; save(state); paint(); });
+  });
+  document.getElementById('reset').addEventListener('click', function(){ state = {}; save(state); paint(); });
+  document.getElementById('print').addEventListener('click', function(){ window.print(); });
+  paint();
+</script>
+</body>
+</html>
