@@ -239,35 +239,21 @@ struct YouTab: View {
         .shadow(color: Color(hex: 0x04BA74).opacity(0.28), radius: 8, x: 0, y: 4)
     }
 
-    // MARK: - "Saved this week" — derived from the same weekly cap the
-    // tracker on Today uses, so the two surfaces always agree. Saved means
-    // "this week's prorated cap minus this week's spend, floored at zero."
-
-    private var weeklySaved: Double {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let weekStart = cal.date(byAdding: .day, value: -6, to: today) ?? today
-        let spent = container.transactions
-            .filter { $0.category != .income && $0.date >= weekStart }
-            .reduce(0) { $0 + $1.amount }
-        let monthCap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
-        let daysInMonth = cal.range(of: .day, in: .month, for: Date())?.count ?? 30
-        let weeklyCap = monthCap * 7.0 / Double(daysInMonth)
-        return max(0, weeklyCap - spent)
-    }
+    // MARK: - "Saving this month" — mirrors AppContainer.safeToSpend (the Today
+    // hero) exactly, so this card never contradicts it. Positive = under the
+    // monthly budget, negative = over.
 
     private var weeklyHeadline: String {
-        if weeklySaved > 0 {
-            return "Saved \(Money.format(weeklySaved, cents: weeklySaved < 100)) this week"
-        }
-        return "This week, wrapped"
+        let s = container.safeToSpend
+        if s > 0 { return "Saving \(Money.format(s, cents: true)) this month" }
+        if s < 0 { return "Over by \(Money.format(-s, cents: true)) this month" }
+        return "Right at your budget"
     }
 
     private var weeklySub: String {
-        if weeklySaved > 0 {
-            return "Under your weekly cap · tap for the wrap"
-        }
-        return "Tap to see where the week went"
+        container.safeToSpend > 0
+            ? "Under your monthly budget · tap for the wrap"
+            : "Tap to see where the month went"
     }
 
     // MARK: - Streak (matches the fire-gradient card on the dashboard)

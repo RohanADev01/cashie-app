@@ -32,7 +32,7 @@ struct QuizScreen: View {
                     .foregroundColor(Theme.Palette.inkSoft)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 10) {
+                    VStack(spacing: 12) {
                         ForEach(question.options) { option in
                             QuizOptionButton(
                                 option: option,
@@ -102,11 +102,13 @@ struct QuizScreen: View {
         withAnimation(Theme.Motion.snap) {
             state.setQuizAnswer(question: question.id, optionID: option.id)
         }
-        // Auto-advance for questions 1–4. Last question still needs the
-        // "See my results" CTA so the user has a deliberate moment.
+        // Auto-advance for questions 1-4. Last question still needs the
+        // "See my results" CTA so the user has a deliberate moment. The delay is
+        // kept short so the quiz feels fast: just long enough to flash the
+        // selected state before the next question slides in.
         guard !isLastQuestion else { return }
         let optID = option.id
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
             // Guard against double-taps that change the selection mid-delay.
             guard state.quizAnswers[question.id] == optID else { return }
             advance()
@@ -144,29 +146,29 @@ private struct QuizOptionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                Text(option.emoji)
-                    .font(.system(size: 22))
+            HStack(spacing: 12) {
                 Text(option.main)
-                    .font(AppFont.text(15, weight: .medium))
+                    .font(AppFont.text(16, weight: .medium))
                     .foregroundColor(Theme.Palette.ink)
                     .multilineTextAlignment(.leading)
-                Spacer()
+                Spacer(minLength: 8)
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(Theme.Palette.gold)
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(isSelected ? Theme.Palette.goldLight : Theme.Palette.bgCream)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Theme.Palette.gold : Theme.Palette.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isSelected ? Theme.Palette.gold : Theme.Palette.line,
+                            lineWidth: isSelected ? 1.5 : 1)
             )
         }
         .buttonStyle(.plainTappable)

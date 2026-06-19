@@ -5,6 +5,10 @@ struct WelcomeScreen: View {
     @State private var coinFloat: CGFloat = 0
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .relatability) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             GoldBlob(alignment: .topTrailing, size: 380)

@@ -36,7 +36,7 @@ Project facts:
    `quick_log_rate` RLS-with-no-policy).
 
 3. **Subscriptions are native StoreKit 2.** The only purchase dependency left is
-   creating the four products in App Store Connect with IDs that match the app
+   creating the two products in App Store Connect with IDs that match the app
    (section 2). There is no dashboard to configure and no key to paste; once the
    products exist and are approved, purchases work.
 
@@ -87,7 +87,7 @@ foreground the app reads `Transaction.currentEntitlements`; an active
 `cashie_pro_*` subscription unlocks the main app, anything else lands on the hard
 paywall.
 
-For a real purchase to succeed, the four products must exist and be approved in
+For a real purchase to succeed, both products must exist and be approved in
 **App Store Connect** with identifiers that exactly match `StoreKitService.productIDs`.
 If they do not, StoreKit returns no products, the paywall can show its fallback
 prices but the purchase call fails, and - because of the hard paywall - no one
@@ -104,30 +104,27 @@ to configure.
 | Plan | Product ID (App Store Connect) | Period | Price | Role |
 |---|---|---|---|---|
 | Monthly | `cashie_pro_monthly` | P1M | $9.99 | shown on paywall |
-| Yearly | `cashie_pro_yearly` | P1Y | $79.99 | shown on paywall (preselected anchor) |
-| Yearly - mid rescue | `cashie_pro_yearly_mid` | P1Y | $35.88 | exit-intent offer #1 ("70% off") |
-| Yearly - deep rescue | `cashie_pro_yearly_special` | P1Y | $23.88 | exit-intent offer #2, final ("80% off") |
+| Yearly | `cashie_pro_yearly` | P1Y | $23.88 | shown on paywall (preselected) |
 
-All four IDs are already used by the app (`StoreKitService.productIDs`) and the
+Both IDs are already used by the app (`StoreKitService.productIDs`) and the
 bundled `Cashie.storekit` test config, so **no app code change is needed for the
 IDs.** The only gap is that the products do not exist in App Store Connect yet.
 
-**Paywall funnel (how the products are used):** full price is shown first ($79.99
-yearly preselected / $9.99 monthly). The two rescue products only appear at
-exit-intent ("Maybe later" tap or backgrounding the app): `$35.88` first, then
-`$23.88` once on a later open, then the price locks at full price forever. All
-four resolve to the same `pro` entitlement. Full strategy + experiment design:
-`pricing-and-paywall-optimization-plan.md`.
+**Single paywall (Guideline 5.6):** both plans are shown on one paywall, yearly
+preselected. The yearly plan ($23.88) carries the discount inline - the
+struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 80%" is
+truthful. There is NO secondary / exit-intent / "rescue" offer wall; the prior
+two-tier funnel (`cashie_pro_yearly_mid` / `_special`) was removed to comply with
+the App Store 5.6 rejection, so those two products are no longer created or used.
 
 ### 2b. App Store Connect (create the products, NO trial)
 
 1. App Store Connect -> your app -> Subscriptions -> create a subscription group
    "Cashie Pro".
-2. Add **four** auto-renewable subscriptions with the exact IDs/prices above:
-   `cashie_pro_monthly` ($9.99/mo), `cashie_pro_yearly` ($79.99/yr),
-   `cashie_pro_yearly_mid` ($35.88/yr), and `cashie_pro_yearly_special`
-   ($23.88/yr). The two rescue products are required for the funnel to work on
-   device - without them the rescue "Claim" buttons no-op.
+2. Add **both** auto-renewable subscriptions with the exact IDs/prices above:
+   `cashie_pro_monthly` ($9.99/mo) and `cashie_pro_yearly` ($23.88/yr). Do NOT
+   create the old `cashie_pro_yearly_mid` / `cashie_pro_yearly_special` rescue
+   products - the exit-intent funnel was removed for Guideline 5.6 compliance.
 3. Add a localized display name + description and a review screenshot for each.
 4. **Do NOT add any Introductory Offer / free trial.** This is a hard paywall.
 5. Submit the products for review with the first build (the first app submission
@@ -391,7 +388,7 @@ end-to-end verification against the App Store, use a Sandbox Apple ID on a devic
 | 1 | `Cashie/App/Config.swift` | Set `supabaseAnonKey`, optional `postHogAPIKey`; swap `quickLogShortcutImportURL` + `applePayShortcutImportURL` from the `google.com` placeholders to the real Shortcut links (no purchase key needed) | **You, on the Mac** |
 | 2 | `Cashie/Resources/Cashie.storekit` | Only if prices change. Keep `introductoryOffer: null` (no trial). Already on canonical IDs | Optional |
 | 3 | `supabase/functions/mint-quick-log-key/` | Done - now verifies Pro via Apple's App Store Server API (RevenueCat removed). To enable minting, set the App Store Connect API key secrets (section 6c) | Optional (Quick Log only) |
-| 4 | App Store Connect | Create the **four** products: `cashie_pro_monthly` $9.99, `cashie_pro_yearly` $79.99, `cashie_pro_yearly_mid` $35.88, `cashie_pro_yearly_special` $23.88 - NO trial (the two rescue products are required for the exit-intent funnel) | **You, on the Mac** |
+| 4 | App Store Connect | Create the **two** products: `cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88 - NO trial. Do NOT create the old mid/special rescue products (exit-intent funnel removed for Guideline 5.6) | **You, on the Mac** |
 
 Everything else is dashboard / App Store Connect / Supabase configuration, not
 code. The full data-entry sheet is `app_store_submission/APP_STORE_CONNECT_FIELDS.md`,
@@ -410,15 +407,14 @@ Terms/Privacy links + disclosure, and the `PrivacyInfo.xcprivacy` manifest.
 
 ## 12. Pre-flight checklist
 
-- [ ] Section 2 done: App Store Connect has all **four** products
-      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $79.99,
-      `cashie_pro_yearly_mid` $35.88, `cashie_pro_yearly_special` $23.88),
+- [ ] Section 2 done: App Store Connect has both products
+      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88),
       NO introductory offer, IDs matching `StoreKitService.productIDs`,
       submitted with the build.
 - [ ] On the device the paywall shows real App Store prices and a sandbox purchase
       reaches the main app (Apple's purchase sheet appears).
-- [ ] Both rescue offers reachable + purchasable on device: "Maybe later" surfaces
-      $35.88; declining + reopening surfaces $23.88; declining that locks full price.
+- [ ] Single paywall verified: NO secondary/exit-intent offer appears after declining
+      or backgrounding (the rescue funnel is removed for Guideline 5.6).
 - [ ] Hard paywall verified: lapse/cancel bounces back to the paywall on foreground;
       restore works.
 - [ ] Quick Log mint entitlement check resolved (section 6c) before relying on Quick

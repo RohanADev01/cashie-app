@@ -4,6 +4,10 @@ struct WelcomeInScreen: View {
     @EnvironmentObject var container: AppContainer
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .nameInput) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ConfettiBackground()

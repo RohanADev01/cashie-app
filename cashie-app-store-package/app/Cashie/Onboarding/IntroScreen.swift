@@ -4,6 +4,10 @@ struct IntroScreen: View {
     @EnvironmentObject var container: AppContainer
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .quiz(1)) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             GoldBlob(alignment: .topTrailing, size: 320, intensity: 0.10).ignoresSafeArea()

@@ -142,7 +142,7 @@ struct SpendTab: View {
                     HStack {
                         Text(group.day).font(AppFont.subhead).foregroundColor(Theme.Palette.ink)
                         Spacer()
-                        Text("−\(Money.format(group.total, cents: true))")
+                        Text(Money.format(group.total, cents: true))
                             .font(AppFont.text(13, weight: .semibold))
                             .foregroundColor(Theme.Palette.inkSoft)
                     }
@@ -330,9 +330,10 @@ struct TransactionRow: View {
         return "\(tx.category.label) · \(timeLabel)"
     }
 
+    // Plain amount, no +/− sign. Income is distinguished by its green colour
+    // (see foregroundColor above), expenses render in ink.
     private var amountLabel: String {
-        let prefix = tx.isIncome ? "+" : "−"
-        return prefix + Money.format(tx.amount, cents: true)
+        Money.format(tx.amount, cents: true)
     }
 
     private var timeLabel: String {

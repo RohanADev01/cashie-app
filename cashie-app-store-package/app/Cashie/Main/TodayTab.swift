@@ -261,14 +261,8 @@ struct TodayTab: View {
     /// makes "saving for the trip" feel like spending the month's budget
     /// on the trip, instead of pretending the money came from nowhere.
     /// Goes negative once you've spent past the cap, so the hero can show it.
-    private var safeToSpendValue: Double {
-        let cal = Calendar.current
-        let monthSpend = container.transactions
-            .filter { $0.category != .income && cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
-            .reduce(0) { $0 + $1.amount }
-        let monthCap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
-        return monthCap - monthSpend - container.monthDepositsTotal
-    }
+    /// Shared via `AppContainer.safeToSpend` so the Wrapped + You cards match.
+    private var safeToSpendValue: Double { container.safeToSpend }
 
     /// Over the monthly cap (small epsilon so a tiny rounding miss isn't "-$0").
     private var safeToSpendNegative: Bool { safeToSpendValue < -0.005 }

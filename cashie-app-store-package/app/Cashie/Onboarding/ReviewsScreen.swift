@@ -1,17 +1,20 @@
 import SwiftUI
+import StoreKit
 
-/// Standalone "help us make Cashie better" screen between SocialProof and
-/// Paywall. Instead of Apple's native prompt (which forces the user to pick a
-/// star count and which we can't pre-fill), it shows an in-app rating that is
-/// already set to 5 stars, so continuing posts a 5-star rating with no extra
-/// step. Apple gives apps no way to silently submit a star rating, so the
-/// actual post happens via the App Store write-a-review deep link once a real
-/// `Config.appStoreID` is set; before publish it simply continues.
+/// Standalone social-proof screen between SocialProof and Paywall: a few real
+/// reviews plus the App Store average. Tapping "Show me the plan" fires Apple's
+/// native in-app rating prompt (`requestReview`) and advances. That prompt is
+/// fully Apple-controlled (no pre-fill, no callback) and iOS rate-limits it
+/// (~3x/year), so it may not appear; either way onboarding continues normally.
 struct ReviewsScreen: View {
     @EnvironmentObject var container: AppContainer
-    @State private var rating = 5
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { submitAndContinue() }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
@@ -29,7 +32,7 @@ struct ReviewsScreen: View {
                         emColor: Theme.Palette.gold
                     )
                     .padding(.top, 4)
-                    Text("Skim a few real ones. Your 5-star rating's ready below.")
+                    Text("Skim a few real ones from people like you.")
                         .font(AppFont.callout)
                         .foregroundColor(Theme.Palette.inkSoft)
                         .padding(.top, 8)
@@ -40,9 +43,6 @@ struct ReviewsScreen: View {
                     ForEach(reviews) { review in
                         ReviewCard(review: review)
                     }
-
-                    yourRating
-                        .padding(.top, 16)
 
                     Spacer(minLength: 16)
 
@@ -57,52 +57,13 @@ struct ReviewsScreen: View {
         }
     }
 
-    // MARK: - Pre-filled rating
-    //
-    // Already set to 5 stars so the user isn't asked to fill anything in;
-    // tapping "Show me the plan" submits it. Stays tappable so anyone who
-    // wants to lower it still can.
-
-    private var yourRating: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Your rating")
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(0.6)
-                .textCase(.uppercase)
-                .foregroundColor(Theme.Palette.inkSoft)
-            HStack(spacing: 12) {
-                ForEach(1...5, id: \.self) { i in
-                    Button {
-                        withAnimation(Theme.Motion.snap) { rating = i }
-                    } label: {
-                        Image(systemName: i <= rating ? "star.fill" : "star")
-                            .font(.system(size: 30))
-                            .foregroundColor(i <= rating ? Color(hex: 0xF5B700) : Theme.Palette.line)
-                    }
-                    .buttonStyle(.plainTappable)
-                }
-            }
-            Text(rating == 5
-                 ? "Set to 5 stars · tap a star to change"
-                 : "\(rating) star\(rating == 1 ? "" : "s") · tap a star to change")
-                .font(AppFont.text(12, weight: .medium))
-                .foregroundColor(Theme.Palette.inkSoft)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.gold.opacity(0.25), lineWidth: 1))
-    }
-
-    /// Posts the pre-selected rating, then advances. Apple has no API to
-    /// submit a star rating silently, so we open the App Store write-a-review
-    /// page (when a real `appStoreID` is configured) and move on. Before the
-    /// app is published the deep link is skipped and we just continue.
+    /// Fires Apple's native in-app rating prompt ("Enjoying Cashie? Tap a star
+    /// to rate it on the App Store"), letting the user rate without leaving the
+    /// app, then advances. The system prompt is presented at the window-scene
+    /// level so it stays up over the next screen; iOS may suppress it
+    /// (rate-limited to ~3 times a year), in which case we simply continue.
     private func submitAndContinue() {
-        if !Config.appStoreID.isEmpty,
-           let url = URL(string: "https://apps.apple.com/app/id\(Config.appStoreID)?action=write-review") {
-            UIApplication.shared.open(url)
-        }
+        requestReview()
         container.advanceOnboarding(to: .contrast)
     }
 

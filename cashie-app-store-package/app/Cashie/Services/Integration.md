@@ -161,18 +161,17 @@ exist in App Store Connect.
 | Auto-renewable subscription products | App Store Connect (human-only) |
 | Product IDs (must match the app exactly) | already set in `StoreKitService.productIDs` + `Cashie.storekit` |
 
-The three product IDs the app expects:
+The two product IDs the app expects:
 
 - `cashie_pro_monthly` — $9.99 / month
-- `cashie_pro_yearly` — $79.99 / year
-- `cashie_pro_yearly_special` — $23.88 / year (one-time exit-intent offer)
+- `cashie_pro_yearly` — $23.88 / year (the single yearly plan; shown as "SAVE 80% vs monthly")
 
 ### Code changes
 
 None required — the binding already defaults to `StoreKitService()`. The only
 thing that must line up is the **product IDs**:
 
-1. Create the three auto-renewable subscriptions above in App Store Connect,
+1. Create the two auto-renewable subscriptions above in App Store Connect,
    all in one subscription group, **with no introductory offer** (Cashie has no
    free trial). Signing/distribution happens on your Mac, not in this VM.
 2. Confirm the IDs match `StoreKitService.productIDs` and the bundled

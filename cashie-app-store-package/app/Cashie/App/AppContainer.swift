@@ -136,7 +136,11 @@ final class AppContainer: ObservableObject {
         self.notifications = n
         self.budgets = b
         self.settings = s
-        if let savedUser {
+        if var savedUser {
+            // Re-resolve the archetype from the live catalog by id, so a profile
+            // saved before an archetype was renamed/retuned always shows the
+            // current copy (name, tagline, stats) on every screen.
+            savedUser.archetype = Archetype.by(id: savedUser.archetype.id)
             self.user = savedUser
         }
 
@@ -212,7 +216,10 @@ final class AppContainer: ObservableObject {
             let b = (try? await supabase.loadBudgets()) ?? budgets
             let s = (try? await supabase.loadSettings()) ?? settings
             isBootstrapping = true
-            if let u { user = u }
+            if var u {
+                u.archetype = Archetype.by(id: u.archetype.id)   // keep name/copy current
+                user = u
+            }
             transactions = t; goals = g; notifications = n; budgets = b; settings = s
             isBootstrapping = false
             // A merge can bring in transactions/goals earned on another device
@@ -550,6 +557,19 @@ final class AppContainer: ObservableObject {
         return goals.flatMap(\.deposits)
             .filter { cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
             .reduce(0) { $0 + $1.amount }
+    }
+
+    /// "Safe to spend" this month = total monthly caps minus this month's
+    /// non-income spend minus this month's goal deposits. The single source of
+    /// truth for the Today hero, the Wrapped net card and the You weekly card,
+    /// so those surfaces never disagree. Goes negative once over the cap.
+    var safeToSpend: Double {
+        let cal = Calendar.current
+        let monthSpend = transactions
+            .filter { $0.category != .income && cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
+            .reduce(0) { $0 + $1.amount }
+        let monthCap = budgets.reduce(0) { $0 + $1.monthlyCap }
+        return monthCap - monthSpend - monthDepositsTotal
     }
 
     /// Total deposits made this month into a single goal. Powers the

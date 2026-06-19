@@ -44,12 +44,21 @@ struct QuickLogKeyCard: View {
             case .ready:
                 readyBlock
             }
+
+            // Importing the shortcut never needs the key, so it stays available
+            // even while the key is loading or temporarily unavailable. A user
+            // who skipped importing during onboarding can still grab it here;
+            // pasting the key is a separate step. Hidden only for non-Pro users.
+            if loadState != .notPro {
+                importSection
+            }
         }
         .task { await load() }
     }
 
     // MARK: - States
 
+    /// Shown once the key has minted: the value (masked, with reveal) + copy.
     private var readyBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
@@ -81,7 +90,25 @@ struct QuickLogKeyCard: View {
                     withAnimation { copied = false }
                 }
             }
+        }
+    }
 
+    private var unavailableBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            statusRow(spinner: false, "Couldn't load your key. Check your connection.")
+            PrimaryButton(title: "Try again",
+                          systemImage: "arrow.clockwise",
+                          trailingArrow: false,
+                          background: Theme.Palette.gold) {
+                Task { await load() }
+            }
+        }
+    }
+
+    /// Import button + how-to steps. Always available (except to non-Pro users)
+    /// so the shortcut can be imported regardless of the key's load state.
+    private var importSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
             PrimaryButton(title: "Import Shortcut",
                           systemImage: "square.and.arrow.down",
                           trailingArrow: false,
@@ -103,25 +130,15 @@ struct QuickLogKeyCard: View {
                 .font(AppFont.text(11))
                 .foregroundColor(Theme.Palette.inkMute)
 
-            Button(action: { Task { await resetKey() } }) {
-                Text(resetting ? "Resetting…" : "Reset key")
-                    .font(AppFont.text(11, weight: .semibold))
-                    .underline()
-                    .foregroundColor(Theme.Palette.inkSoft)
-            }
-            .buttonStyle(.plainTappable)
-            .disabled(resetting)
-        }
-    }
-
-    private var unavailableBlock: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            statusRow(spinner: false, "Couldn't load your key. Check your connection.")
-            PrimaryButton(title: "Try again",
-                          systemImage: "arrow.clockwise",
-                          trailingArrow: false,
-                          background: Theme.Palette.ink) {
-                Task { await load() }
+            if loadState == .ready {
+                Button(action: { Task { await resetKey() } }) {
+                    Text(resetting ? "Resetting…" : "Reset key")
+                        .font(AppFont.text(11, weight: .semibold))
+                        .underline()
+                        .foregroundColor(Theme.Palette.inkSoft)
+                }
+                .buttonStyle(.plainTappable)
+                .disabled(resetting)
             }
         }
     }

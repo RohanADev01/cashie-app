@@ -6,6 +6,10 @@ struct TraitsScreen: View {
     @State private var fillProgress: CGFloat = 0
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .pain) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {

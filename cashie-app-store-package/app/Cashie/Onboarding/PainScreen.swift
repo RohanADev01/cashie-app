@@ -5,6 +5,10 @@ struct PainScreen: View {
     @EnvironmentObject var state: OnboardingState
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .solution) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {

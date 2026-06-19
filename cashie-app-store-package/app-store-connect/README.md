@@ -7,7 +7,7 @@ screenshots. Generated 2026-06-13.
 
 - **`APP_STORE_CONNECT_FIELDS.md`** - the fill-in sheet. Every App Store Connect
   field with paste-ready content: app name, subtitle, description, keywords,
-  promo text, URLs, pricing, the subscription group + all four products (no free
+  promo text, URLs, pricing, the subscription group + both products (no free
   trial), the subscription review screenshots, App Privacy nutrition-label
   answers, App Review notes (with the Sandbox path for the hard paywall), export
   compliance, and a final submit checklist. Section 0 lists the only values you
@@ -21,8 +21,9 @@ screenshots. Generated 2026-06-13.
   - `ipad_13_inch/` - 2064 x 2752, kept for reference only. The app is
     **iPhone-only**, so no iPad screenshots are needed (App Store Connect won't
     show an iPad slot).
-  - `subscriptions/` - 3 subscription review screenshots (paywall + the two
-    rescue offers). Attach one to each of the four products per §5 of the sheet.
+  - `subscriptions/` - the subscription review screenshot (the single paywall
+    showing both plans). Attach `01_paywall_monthly_and_yearly.png` to each of
+    the two products per §5 of the sheet.
   - 24-bit PNG, no transparency, each well under 8 MB.
   - Regenerate marketing set: `python3 scripts/gen_app_store_screenshots.py`
 

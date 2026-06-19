@@ -89,18 +89,18 @@ struct WrappedSheet: View {
     }
 
     private var posterStats: WrappedSharePoster.Stats {
-        let saved = weeklySavedFromCap
+        let saved = container.safeToSpend
         let won = daysLoggedThisWeek
         let count = weekTransactionCount
         let avg = count > 0 ? weeklySpend / Double(count) : 0
 
         let savedHeadline: String
         if saved > 0 {
-            savedHeadline = "Saved \(Money.format(saved, cents: saved < 100))"
-        } else if weeklySpend > weeklyCapValue {
-            savedHeadline = "Over your weekly cap"
+            savedHeadline = "Saving \(Money.format(saved, cents: true))"
+        } else if saved < 0 {
+            savedHeadline = "Over by \(Money.format(-saved, cents: true))"
         } else {
-            savedHeadline = "Right at your cap"
+            savedHeadline = "Right at your budget"
         }
         let savedNote = savedNote(saved: saved)
 
@@ -141,10 +141,12 @@ struct WrappedSheet: View {
     // MARK: - Cards
 
     private var netCard: some View {
-        let saved = weeklySavedFromCap
-        let headline = "Saved \(Money.format(saved, cents: saved < 100)) this week"
+        let saved = container.safeToSpend
+        let headline = saved >= 0
+            ? "Saving \(Money.format(saved, cents: true)) this month"
+            : "Over by \(Money.format(-saved, cents: true)) this month"
         return gradientCard(
-            palette: .green,
+            palette: saved >= 0 ? .green : .fire,
             headline: headline,
             sub: savedNote(saved: saved)
         ) {
@@ -341,32 +343,19 @@ struct WrappedSheet: View {
         return logged
     }
 
-    /// Prorated weekly cap: 7 days' worth of the total monthly cap.
-    private var weeklyCapValue: Double {
-        let cal = Calendar.current
-        let monthCap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
-        let daysInMonth = cal.range(of: .day, in: .month, for: Date())?.count ?? 30
-        return monthCap * 7.0 / Double(daysInMonth)
-    }
-
-    /// Saved this week = prorated weekly cap minus this week's spend, floored
-    /// at zero. Same window as `weeklySpend` so every wrap number agrees.
-    private var weeklySavedFromCap: Double {
-        max(0, weeklyCapValue - weeklySpend)
-    }
-
+    /// Note under the net card. Mirrors `container.safeToSpend` (the Today hero)
+    /// so the wrap never contradicts it: positive = under the monthly budget,
+    /// negative = over.
     private func savedNote(saved: Double) -> String {
-        guard weeklyCapValue > 0 else { return "Set a monthly cap to track savings." }
-        let spent = weeklySpend
-        if spent < weeklyCapValue {
-            let under = weeklyCapValue - spent
-            return "Under your weekly cap by \(Money.format(under, cents: under < 100))."
+        let monthCap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
+        guard monthCap > 0 else { return "Set a monthly cap to track savings." }
+        if saved > 0 {
+            return "Under your monthly budget by \(Money.format(saved, cents: saved < 100))."
         }
-        if spent > weeklyCapValue {
-            let over = spent - weeklyCapValue
-            return "Over your weekly cap by \(Money.format(over, cents: over < 100))."
+        if saved < 0 {
+            return "Over your monthly budget by \(Money.format(-saved, cents: -saved < 100))."
         }
-        return "Right at your weekly cap."
+        return "Right at your monthly budget."
     }
 
     private func daysLoggedNote(won: Int) -> String {

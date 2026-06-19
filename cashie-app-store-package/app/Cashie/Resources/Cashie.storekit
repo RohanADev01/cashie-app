@@ -85,14 +85,14 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "79.99",
+          "displayPrice" : "23.88",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "8AB2D9C1-3F4E-49D2-B3F0-2D5A1B6E8FF0",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Cashie Pro · yearly access. Save vs monthly.",
+              "description" : "Cashie Pro · yearly access. Save 80% vs monthly.",
               "displayName" : "Cashie Pro Yearly",
               "locale" : "en_US"
             }
@@ -100,50 +100,6 @@
           "productID" : "cashie_pro_yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Cashie Pro Yearly",
-          "subscriptionGroupID" : "8C6E1B3D-9AE6-4F14-9F1D-2E0F8B0C7C20",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : []
-        },
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayPrice" : "23.88",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "C7B6A5D4-1E2F-43A8-B591-5C3D2E1F7A9B",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "Cashie Pro · yearly at a one-time exit-intent price.",
-              "displayName" : "Cashie Pro Yearly (special)",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "cashie_pro_yearly_special",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Cashie Pro Yearly Special",
-          "subscriptionGroupID" : "8C6E1B3D-9AE6-4F14-9F1D-2E0F8B0C7C20",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : []
-        },
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayPrice" : "35.88",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "D8C7B6A5-2F3E-44B9-A6C2-6D4E3F2A8BAC",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "Cashie Pro · yearly at a one-time welcome price.",
-              "displayName" : "Cashie Pro Yearly (welcome offer)",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "cashie_pro_yearly_mid",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Cashie Pro Yearly Mid",
           "subscriptionGroupID" : "8C6E1B3D-9AE6-4F14-9F1D-2E0F8B0C7C20",
           "type" : "RecurringSubscription",
           "winbackOffers" : []

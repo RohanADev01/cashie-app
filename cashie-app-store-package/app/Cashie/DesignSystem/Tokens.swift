@@ -96,6 +96,24 @@ extension ButtonStyle where Self == TappablePlainButtonStyle {
     static var plainTappable: TappablePlainButtonStyle { TappablePlainButtonStyle() }
 }
 
+extension View {
+    /// "Tap anywhere to continue" for a linear onboarding screen: any tap not
+    /// consumed by a control (button, field, etc.) runs `action`, the same
+    /// forward step the primary CTA triggers. Controls on top keep working
+    /// because they consume their own taps; scrolling is unaffected (a drag is
+    /// not a tap). Pass `enabled: false` to suspend it (e.g. while a screen's
+    /// entrance animation is still playing). Reserved for screens with a single
+    /// forward CTA, never for ones where a tap selects (quiz, pickers, paywall).
+    @ViewBuilder
+    func tapAnywhereToContinue(enabled: Bool = true, perform action: @escaping () -> Void) -> some View {
+        if enabled {
+            self.contentShape(Rectangle()).onTapGesture(perform: action)
+        } else {
+            self
+        }
+    }
+}
+
 /// A sticky decorative blob that mimics the radial gradients used on
 /// onboarding screens (top-right, bottom-left, etc.).
 struct GoldBlob: View {

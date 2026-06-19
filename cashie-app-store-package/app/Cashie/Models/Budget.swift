@@ -10,7 +10,7 @@ struct CategoryBudget: Identifiable, Codable, Hashable {
 
 extension CategoryBudget {
     /// Default monthly cap applied to every category on a fresh install.
-    static let defaultCap: Double = 1500
+    static let defaultCap: Double = 100
 
     /// Shipped default: every spendable (non-income) category starts at
     /// `defaultCap`/mo on a fresh install and stays there until the user

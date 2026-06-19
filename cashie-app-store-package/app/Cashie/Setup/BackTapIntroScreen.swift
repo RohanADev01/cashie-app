@@ -8,6 +8,10 @@ struct BackTapIntroScreen: View {
     @State private var ringScale: CGFloat = 0.6
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .backTapTeaser) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
 

@@ -6,6 +6,10 @@ struct SocialProofScreen: View {
     @State private var chartProgress: CGFloat = 0
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .reviews) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ScrollView(showsIndicators: false) {

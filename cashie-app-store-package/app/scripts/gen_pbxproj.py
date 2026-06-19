@@ -426,7 +426,7 @@ def render_pbxproj() -> str:
         "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor",
         "CODE_SIGN_STYLE = Automatic",
-        "CURRENT_PROJECT_VERSION = 1",
+        "CURRENT_PROJECT_VERSION = 2",
         "DEVELOPMENT_ASSET_PATHS = \"\"",
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = NO",
@@ -434,14 +434,13 @@ def render_pbxproj() -> str:
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation = YES",
-        "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = \"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight\"",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = \"UIInterfaceOrientationPortrait\"",
         "LD_RUNPATH_SEARCH_PATHS = (\"$(inherited)\", \"@executable_path/Frameworks\")",
         "MARKETING_VERSION = 1.0",
         f"PRODUCT_BUNDLE_IDENTIFIER = {BUNDLE_ID}",
         f"PRODUCT_NAME = \"$(TARGET_NAME)\"",
         "SWIFT_EMIT_LOC_STRINGS = YES",
-        "TARGETED_DEVICE_FAMILY = \"1,2\"",
+        "TARGETED_DEVICE_FAMILY = \"1\"",
     ]
     emit_cfg(DEBUG_TGT, "Debug", target_common)
     emit_cfg(RELEASE_TGT, "Release", target_common)

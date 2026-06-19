@@ -98,9 +98,12 @@ Set up Quick Log and add a spend with a Back Tap, the Action Button, or Siri, ev
 PRIVATE BY DESIGN
 Your data is yours. It is protected on device and synced to your own private, encrypted account. No selling your data, no ad tracking, ever.
 
-Cashie Pro unlocks the full app.
+SUBSCRIPTION REQUIRED
+Cashie is a subscription app. A paid Cashie Pro subscription is required to use the app and unlock all features. Plans:
+- Yearly: $23.88 per year (best value)
+- Monthly: $9.99 per month
 
-Payment is charged to your Apple Account at confirmation of purchase. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in your Apple Account settings.
+Prices are shown in USD; you are billed in your local currency at the rate shown at checkout. There is no free trial. Payment is charged to your Apple Account at confirmation of purchase. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in your Apple Account settings.
 
 Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Privacy Policy: https://cashie.space/privacy
@@ -167,15 +170,15 @@ Monetization is entirely via the auto-renewable subscriptions in section 5.
 
 ## 5. Subscriptions (In-App Purchases) - NO free trial
 
-Create ONE subscription group, then the **four** products. Product IDs must
+Create ONE subscription group, then the **two** products. Product IDs must
 EXACTLY match the app (`StoreKitService.productIDs`); see `GO_LIVE_RUNBOOK.md`
 section 2. Subscriptions are native StoreKit 2 - there is no RevenueCat to configure.
 
-**Funnel:** Products 1-2 ($9.99 / $79.99) are shown on the paywall (yearly
-preselected anchor). Products 3-4 are the exit-intent **rescue** offers - never
-shown until the user signals leaving ("Maybe later" / backgrounding): $35.88
-first, then $23.88 once on a later open, then the price locks at full forever.
-All four are required for the device funnel. See `pricing-and-paywall-optimization-plan.md`.
+**Single paywall (Guideline 5.6):** both products are shown on one paywall,
+yearly preselected. The yearly plan ($23.88) carries the discount inline - the
+struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 80%" is
+truthful. There is NO secondary / exit-intent / "rescue" offer wall (the prior
+two-tier funnel was removed to comply with the 5.6 rejection).
 
 ### Subscription Group
 | Field | Value |
@@ -185,8 +188,8 @@ All four are required for the device funnel. See `pricing-and-paywall-optimizati
 | App Name (subscription group, if asked) | `Cashie` |
 
 > **Subscription group order/rank:** put `cashie_pro_yearly` at the top, then
-> monthly, then the two rescue products. Rank only affects upgrade/downgrade
-> proration within the group; it does not change what the paywall shows.
+> monthly. Rank only affects upgrade/downgrade proration within the group; it
+> does not change what the paywall shows.
 
 ### Product 1 - Monthly
 | Field | Value |
@@ -206,48 +209,22 @@ All four are required for the device funnel. See `pricing-and-paywall-optimizati
 | Product ID | `cashie_pro_yearly` |
 | Reference Name (internal) | `Cashie Pro Yearly` |
 | Duration | 1 Year |
-| Price | $79.99 USD |
+| Price | $23.88 USD |
 | Display Name (max 30) | `Cashie Pro Yearly` |
 | Description (max 45) | `All of Cashie, best value. Billed yearly.` |
 | Introductory Offer | NONE |
 | Review screenshot | `screenshots/subscriptions/01_paywall_monthly_and_yearly.png` |
 
-### Product 3 - Yearly mid rescue (exit-intent offer #1, "70% off")
-| Field | Value |
-|---|---|
-| Product ID | `cashie_pro_yearly_mid` |
-| Reference Name (internal) | `Cashie Pro Yearly Mid` |
-| Duration | 1 Year |
-| Price | $35.88 USD |
-| Display Name (max 30) | `Cashie Pro Yearly Offer` |
-| Description (max 45) | `A one-time welcome price, billed yearly.` |
-| Introductory Offer | NONE |
-| Review screenshot | `screenshots/subscriptions/02_rescue_mid_3588.png` |
-
-### Product 4 - Yearly deep rescue (exit-intent offer #2, final, "80% off")
-| Field | Value |
-|---|---|
-| Product ID | `cashie_pro_yearly_special` |
-| Reference Name (internal) | `Cashie Pro Yearly Final Offer` |
-| Duration | 1 Year |
-| Price | $23.88 USD |
-| Display Name (max 30) | `Cashie Pro Yearly Offer` |
-| Description (max 45) | `Our lowest one-time price, billed yearly.` |
-| Introductory Offer | NONE |
-| Review screenshot | `screenshots/subscriptions/03_rescue_deep_2388.png` |
-
 ### Per-product extras (required for review)
 - **Localized display name + description** (English at minimum) - the exact text
   is in each product table above. Add it under the product's "App Store
   Localization" section.
-- **Review screenshot (required on each of the 4 products)** - the ready-to-upload
+- **Review screenshot (required on each of the 2 products)** - the ready-to-upload
   file is named in each table above and lives in
   `screenshots/subscriptions/`. They are real device captures of the live
-  paywall and the two rescue offers, so each price matches its product:
-  - `01_paywall_monthly_and_yearly.png` - $9.99 monthly + $79.99 yearly (products 1 & 2)
-  - `02_rescue_mid_3588.png` - the $35.88 "70% off" rescue (product 3)
-  - `03_rescue_deep_2388.png` - the $23.88 "80% off" final rescue (product 4)
-- **Review note** (paste on each product): `Subscription unlocks the full app (hard paywall). Test with the Sandbox account in the App Review notes. The rescue-priced products (mid/special) appear only after the user declines the standard price, via the in-app exit-intent flow.`
+  paywall, so each price matches its product:
+  - `01_paywall_monthly_and_yearly.png` - $9.99 monthly + $23.88 yearly (products 1 & 2)
+- **Review note** (paste on each product): `Subscription unlocks the full app (hard paywall). Test with the Sandbox account in the App Review notes. There is a single paywall with both plans; there is no secondary or exit-intent offer.`
 - **Subscription privacy policy URL** (App Store Connect asks for this at the
   group level): `https://cashie.space/privacy`.
 - **App-specific shared secret:** NOT needed. Native StoreKit 2 verifies
@@ -294,10 +271,10 @@ Two kinds, both ready to upload, in `screenshots/`:
 > stretching). If unsure, the 6.5" set (1242 x 2688) is accepted on every
 > current iPhone record.
 
-**B. Subscription review screenshots** (one required on each of the 4 products,
-see §5): `screenshots/subscriptions/` - `01_paywall_monthly_and_yearly.png`,
-`02_rescue_mid_3588.png`, `03_rescue_deep_2388.png`. These are real captures of
-the live paywall / rescue offers, so the on-screen price matches each product.
+**B. Subscription review screenshots** (one required on each of the 2 products,
+see §5): `screenshots/subscriptions/` - `01_paywall_monthly_and_yearly.png`.
+This is a real capture of the live single paywall, so the on-screen price
+($9.99 monthly, $23.88 yearly) matches each product.
 
 - 24-bit PNG, no transparency, each well under 8 MB.
 - Apple auto-scales the 6.9" set down to 6.5" and smaller, so you only upload the
@@ -389,7 +366,7 @@ Then in App Store Connect answer: Uses encryption -> Yes; Qualifies for exemptio
 
 ## 11. Final submit checklist
 
-- [ ] Subscription group + all four products created (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $79.99, `cashie_pro_yearly_mid` $35.88, `cashie_pro_yearly_special` $23.88), prices set, NO introductory offer, the matching `screenshots/subscriptions/` review screenshot attached to each, review note pasted.
+- [ ] Subscription group + both products created (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88), prices set, NO introductory offer, the matching `screenshots/subscriptions/` review screenshot attached to each, review note pasted.
 - [ ] Product IDs match the app (`StoreKitService.productIDs`); RUNBOOK section 2 done.
 - [ ] App Name, Subtitle, Promo Text, Description, Keywords, URLs, Copyright filled (only the §0 `<...>` inputs needed your own values).
 - [ ] iPhone marketing screenshots uploaded (6.9" or 6.5"; app is **iPhone-only**, no iPad set).

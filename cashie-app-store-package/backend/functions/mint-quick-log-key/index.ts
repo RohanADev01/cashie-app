@@ -31,8 +31,6 @@ const BUNDLE_ID = Deno.env.get("APP_BUNDLE_ID") ?? "com.cashie.app";
 const PRO_PRODUCT_IDS = new Set([
   "cashie_pro_monthly",
   "cashie_pro_yearly",
-  "cashie_pro_yearly_mid",
-  "cashie_pro_yearly_special",
 ]);
 
 // App Store Server API hosts. Try production first, then sandbox — App Review

@@ -51,7 +51,10 @@ struct OnboardingHost: View {
     private var content: some View {
         switch step {
         case .welcome: WelcomeScreen()
-        case .relatability: RelatabilityScreen()
+        // The old chat screen (RelatabilityScreen) has been retired from the
+        // flow but kept in the repo; this step now shows the tap-through
+        // feature tour instead.
+        case .relatability: FeatureTourScreen()
         case .intro: IntroScreen()
         case .quiz(let n): QuizScreen(questionIndex: n - 1)
         case .loading: LoadingScreen()

@@ -14,13 +14,12 @@ struct RevealScreen: View {
         case nameHeadline = 2
         case badge = 3
         case tagline = 4
-        case statsCard = 5
-        case stat1 = 6
-        case stat2 = 7
-        case stat3 = 8
-        case cta = 9
+        case statsCard = 5   // the whole results table reveals together
+        case cta = 6
     }
 
+    // No tap-anywhere here: the reveal is a deliberate moment and stray taps
+    // were causing trouble, so only the explicit CTA advances.
     var body: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
@@ -120,47 +119,35 @@ struct RevealScreen: View {
             .multilineTextAlignment(.center)
     }
 
+    /// The results table. Revealed all together with the `statsCard` beat (the
+    /// parent gates its opacity/scale), and each row is a quiz-style card
+    /// (rounded continuous corners, cream fill, hairline border) so it matches
+    /// the quiz options.
     private var insights: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Quick stats")
                 .font(AppFont.text(11, weight: .semibold))
                 .tracking(1)
                 .textCase(.uppercase)
                 .foregroundColor(Theme.Palette.inkSoft)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 10)
+                .padding(.bottom, 2)
 
-            statRow(beat: .stat1,
-                    label: "Confidence in match",
-                    value: "\(state.selectedArchetype.matchPercent)%")
-            dividerRow(beat: .stat1, nextBeat: .stat2)
-            statRow(beat: .stat2,
-                    label: "Estimated $/year leak",
-                    value: Money.format(state.selectedArchetype.painYearly))
-            dividerRow(beat: .stat2, nextBeat: .stat3)
-            statRow(beat: .stat3,
-                    label: "Others like you we've seen",
-                    value: state.selectedArchetype.populationLabel,
-                    avatars: true)
+            statCard(label: "Confidence in match",
+                     value: "\(state.selectedArchetype.matchPercent)%")
+            statCard(label: "Estimated $/year leak",
+                     value: Money.format(state.selectedArchetype.painYearly))
+            statCard(label: "Others like you we've seen",
+                     value: state.selectedArchetype.populationLabel,
+                     avatars: true)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Theme.Palette.bgCream)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.Palette.line, lineWidth: 1)
-        )
     }
 
-    private func statRow(beat: Beat, label: String, value: String, avatars: Bool = false) -> some View {
-        HStack {
+    private func statCard(label: String, value: String, avatars: Bool = false) -> some View {
+        HStack(spacing: 12) {
             Text(label)
-                .font(AppFont.callout)
+                .font(AppFont.text(16, weight: .medium))
                 .foregroundColor(Theme.Palette.ink)
-            Spacer()
+            Spacer(minLength: 8)
             if avatars {
                 HStack(spacing: 8) {
                     AvatarStack(size: 26, overlap: 9)
@@ -174,16 +161,17 @@ struct RevealScreen: View {
                     .foregroundColor(Theme.Palette.ink)
             }
         }
-        .padding(.vertical, 10)
-        .opacity(reached(beat) ? 1 : 0)
-        .offset(x: reached(beat) ? 0 : 20)
-    }
-
-    private func dividerRow(beat: Beat, nextBeat: Beat) -> some View {
-        Rectangle()
-            .fill(Theme.Palette.lineSoft)
-            .frame(height: 1)
-            .opacity(reached(nextBeat) ? 1 : 0)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Theme.Palette.bgCream)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Theme.Palette.line, lineWidth: 1)
+        )
     }
 
     // MARK: Driver
@@ -199,10 +187,7 @@ struct RevealScreen: View {
                 (0.55, .badge, .spring(response: 0.55, dampingFraction: 0.55)),
                 (0.55, .tagline, .spring(response: 0.55, dampingFraction: 0.85)),
                 (0.70, .statsCard, .spring(response: 0.55, dampingFraction: 0.85)),
-                (0.55, .stat1, .spring(response: 0.50, dampingFraction: 0.78)),
-                (0.45, .stat2, .spring(response: 0.50, dampingFraction: 0.78)),
-                (0.45, .stat3, .spring(response: 0.50, dampingFraction: 0.78)),
-                (0.55, .cta, .spring(response: 0.55, dampingFraction: 0.82)),
+                (0.65, .cta, .spring(response: 0.55, dampingFraction: 0.82)),
             ]
             for entry in beats {
                 try? await Task.sleep(nanoseconds: UInt64(entry.0 * 1_000_000_000))

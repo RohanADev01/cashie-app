@@ -38,7 +38,7 @@ struct Archetype: Identifiable, Codable, Hashable {
     static let all: [Archetype] = [
         Archetype(
             id: .planner,
-            name: "The Planner",
+            name: "Steady Planner",
             emoji: "🛡",
             tagline: "Money is a tool. You like a system.",
             description: "You don't gamble with your future. You build it line by line.",
@@ -48,7 +48,7 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
         Archetype(
             id: .yolo,
-            name: "The YOLO Spender",
+            name: "YOLO Spender",
             emoji: "🪽",
             tagline: "Lives now, pays later, memories over money.",
             description: "You don't want to budget, you want to know when to actually stop.",
@@ -58,7 +58,7 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
         Archetype(
             id: .avoider,
-            name: "The Avoider",
+            name: "Money Avoider",
             emoji: "🙈",
             tagline: "If I don't look, it's not real.",
             description: "Closing the app won't make the leak stop. Naming it will.",
@@ -68,7 +68,7 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
         Archetype(
             id: .cautious,
-            name: "The Cautious",
+            name: "Cautious Saver",
             emoji: "🧘",
             tagline: "Better safe than spent.",
             description: "You hold tight, you just need a system that gives you permission to enjoy.",
@@ -78,7 +78,7 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
         Archetype(
             id: .balanced,
-            name: "The Balanced",
+            name: "Balanced Spender",
             emoji: "🤝",
             tagline: "Knows enough, acts most of the time.",
             description: "You're close. Cashie hands you the last 20%.",
@@ -88,7 +88,7 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
         Archetype(
             id: .optimiser,
-            name: "The Optimiser",
+            name: "Numbers Optimiser",
             emoji: "🧠",
             tagline: "Numbers are a sport.",
             description: "You'll love what the data shows you.",

@@ -5,6 +5,18 @@ struct ReadyScreen: View {
     @EnvironmentObject var state: OnboardingState
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { enterApp() }
+    }
+
+    /// Commits the chosen archetype/traits, then enters the main app. Shared by
+    /// the "Open Cashie" button and tap-anywhere so both do the same work.
+    private func enterApp() {
+        container.user.archetype = state.selectedArchetype
+        container.user.traits = state.traits
+        container.goToMain()
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ConfettiBackground()
@@ -41,9 +53,7 @@ struct ReadyScreen: View {
                 Spacer()
 
                 PrimaryButton(title: "Open Cashie") {
-                    container.user.archetype = state.selectedArchetype
-                    container.user.traits = state.traits
-                    container.goToMain()
+                    enterApp()
                 }
             }
             .padding(.horizontal, 28)

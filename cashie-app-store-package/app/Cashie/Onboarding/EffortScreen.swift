@@ -11,6 +11,10 @@ struct EffortScreen: View {
     ]
 
     var body: some View {
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .permissions) }
+    }
+
+    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {
