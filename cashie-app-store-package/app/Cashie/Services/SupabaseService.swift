@@ -52,8 +52,20 @@ protocol SupabaseService: AnyObject {
 /// File-on-disk mock used until real Supabase keys are wired up. First
 /// launch seeds with `SampleData`; subsequent launches read the persisted
 /// state from `LocalStore`.
+///
+/// All mutable state is guarded by `stateLock`. The async methods on this
+/// non-isolated class hop OFF the calling actor (e.g. `SyncEngine`) and run
+/// on the global cooperative executor, so two in-flight calls can read and
+/// write these struct fields concurrently. Without the lock the embedded
+/// heap-backed members (String/Dictionary/Array inside `CashieUser` etc.)
+/// suffer refcount races, and the next `assignWithCopy` — most visibly the
+/// `@Published user = u` in `AppContainer.reloadFromLocal` — crashes with a
+/// PAC failure in `_swift_release_dealloc`. Disk I/O is kept outside the
+/// lock because `LocalStore` already serialises writes on its own queue.
 final class MockSupabaseService: SupabaseService {
     private let store = LocalStore.shared
+
+    private let stateLock = NSLock()
 
     private var transactions: [Transaction]
     private var goals: [Goal]
@@ -61,6 +73,13 @@ final class MockSupabaseService: SupabaseService {
     private var budgets: [CategoryBudget]
     private var user: CashieUser?
     private var settings: AppSettings
+
+    /// Run `body` under `stateLock`. Returned values are copied inside the
+    /// critical section so callers receive a clean, refcount-correct snapshot.
+    private func withState<T>(_ body: () -> T) -> T {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return body()
+    }
 
     init() {
         let seeded = UserDefaults.standard.bool(forKey: LocalStore.Key.seeded)
@@ -99,99 +118,125 @@ final class MockSupabaseService: SupabaseService {
 
     // MARK: - User
 
-    func loadUser() async throws -> CashieUser? { user }
+    func loadUser() async throws -> CashieUser? {
+        withState { user }
+    }
 
     func saveUser(_ user: CashieUser) async throws {
-        self.user = user
+        withState { self.user = user }
         store.save(user, key: LocalStore.Key.user)
     }
 
     // MARK: - Transactions
 
     func loadTransactions() async throws -> [Transaction] {
-        transactions.sorted { $0.date > $1.date }
+        withState { transactions.sorted { $0.date > $1.date } }
     }
 
     func addTransaction(_ tx: Transaction) async throws {
-        transactions.insert(tx, at: 0)
-        store.save(transactions, key: LocalStore.Key.transactions)
+        let snapshot = withState { () -> [Transaction] in
+            transactions.insert(tx, at: 0)
+            return transactions
+        }
+        store.save(snapshot, key: LocalStore.Key.transactions)
     }
 
     func updateTransaction(_ tx: Transaction) async throws {
-        if let idx = transactions.firstIndex(where: { $0.id == tx.id }) {
-            transactions[idx] = tx
-        } else {
-            transactions.insert(tx, at: 0)
+        let snapshot = withState { () -> [Transaction] in
+            if let idx = transactions.firstIndex(where: { $0.id == tx.id }) {
+                transactions[idx] = tx
+            } else {
+                transactions.insert(tx, at: 0)
+            }
+            return transactions
         }
-        store.save(transactions, key: LocalStore.Key.transactions)
+        store.save(snapshot, key: LocalStore.Key.transactions)
     }
 
     func deleteTransaction(_ id: UUID) async throws {
-        transactions.removeAll { $0.id == id }
-        store.save(transactions, key: LocalStore.Key.transactions)
+        let snapshot = withState { () -> [Transaction] in
+            transactions.removeAll { $0.id == id }
+            return transactions
+        }
+        store.save(snapshot, key: LocalStore.Key.transactions)
     }
 
     // MARK: - Bulk replace (used when a remote pull rehydrates local state)
 
     func replaceTransactions(_ txs: [Transaction]) async throws {
-        transactions = txs
-        store.save(transactions, key: LocalStore.Key.transactions)
+        withState { transactions = txs }
+        store.save(txs, key: LocalStore.Key.transactions)
     }
 
     func replaceGoals(_ goals: [Goal]) async throws {
-        self.goals = goals
-        store.save(self.goals, key: LocalStore.Key.goals)
+        withState { self.goals = goals }
+        store.save(goals, key: LocalStore.Key.goals)
     }
 
     func replaceNotifications(_ ns: [AppNotification]) async throws {
-        notifications = ns
-        store.save(notifications, key: LocalStore.Key.notifications)
+        withState { notifications = ns }
+        store.save(ns, key: LocalStore.Key.notifications)
     }
 
     // MARK: - Goals
 
-    func loadGoals() async throws -> [Goal] { goals }
+    func loadGoals() async throws -> [Goal] {
+        withState { goals }
+    }
 
     func saveGoal(_ goal: Goal) async throws {
-        if let idx = goals.firstIndex(where: { $0.id == goal.id }) {
-            goals[idx] = goal
-        } else {
-            goals.append(goal)
+        let snapshot = withState { () -> [Goal] in
+            if let idx = goals.firstIndex(where: { $0.id == goal.id }) {
+                goals[idx] = goal
+            } else {
+                goals.append(goal)
+            }
+            return goals
         }
-        store.save(goals, key: LocalStore.Key.goals)
+        store.save(snapshot, key: LocalStore.Key.goals)
     }
 
     func deleteGoal(_ id: UUID) async throws {
-        goals.removeAll { $0.id == id }
-        store.save(goals, key: LocalStore.Key.goals)
+        let snapshot = withState { () -> [Goal] in
+            goals.removeAll { $0.id == id }
+            return goals
+        }
+        store.save(snapshot, key: LocalStore.Key.goals)
     }
 
     // MARK: - Notifications
 
     func loadNotifications() async throws -> [AppNotification] {
-        notifications.sorted { $0.date > $1.date }
+        withState { notifications.sorted { $0.date > $1.date } }
     }
 
     func markNotificationsRead() async throws {
-        notifications = notifications.map { var n = $0; n.isUnread = false; return n }
-        store.save(notifications, key: LocalStore.Key.notifications)
+        let snapshot = withState { () -> [AppNotification] in
+            notifications = notifications.map { var n = $0; n.isUnread = false; return n }
+            return notifications
+        }
+        store.save(snapshot, key: LocalStore.Key.notifications)
     }
 
     // MARK: - Budgets
 
-    func loadBudgets() async throws -> [CategoryBudget] { budgets }
+    func loadBudgets() async throws -> [CategoryBudget] {
+        withState { budgets }
+    }
 
     func saveBudgets(_ budgets: [CategoryBudget]) async throws {
-        self.budgets = budgets
+        withState { self.budgets = budgets }
         store.save(budgets, key: LocalStore.Key.budgets)
     }
 
     // MARK: - Settings
 
-    func loadSettings() async throws -> AppSettings { settings }
+    func loadSettings() async throws -> AppSettings {
+        withState { settings }
+    }
 
     func saveSettings(_ settings: AppSettings) async throws {
-        self.settings = settings
+        withState { self.settings = settings }
         store.save(settings, key: LocalStore.Key.settings)
     }
 }
