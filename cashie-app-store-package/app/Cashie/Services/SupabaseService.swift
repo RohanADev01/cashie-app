@@ -411,6 +411,13 @@ actor SyncEngine: SupabaseService {
 
     /// Drains the outbox one op at a time. Stops on the first failure so we
     /// don't spin against a dead endpoint; the next launch/foreground retries.
+    ///
+    /// IMPORTANT: actor methods may suspend at `await` points, during which
+    /// another actor-isolated call (e.g. `track`'s `dropMatching`) can mutate
+    /// `outbox`. So we must NOT assume the op at index 0 after we resume is the
+    /// same one we picked up. Removing by id (and tolerating "already gone")
+    /// prevents the `removeFirst()` empty-collection trap that crashed TestFlight
+    /// users right after onboarding screens that fire `saveUser`.
     private func flush() async {
         guard let remote, !remoteDisabled, !isFlushing else { return }
         isFlushing = true
@@ -427,9 +434,15 @@ actor SyncEngine: SupabaseService {
             }
             await indicator.end()
             if ok {
-                outbox.removeFirst()
-                persistOutbox()
-                await publishPending()
+                // The op may already have been removed during the await above
+                // (e.g. a fresh save with the same dedupeKey collapsed onto it,
+                // or another path dropped it). Removing by id is a no-op in that
+                // case, instead of trapping on an empty collection.
+                if let idx = outbox.firstIndex(where: { $0.id == op.id }) {
+                    outbox.remove(at: idx)
+                    persistOutbox()
+                    await publishPending()
+                }
             } else {
                 break   // retry later; data already safe locally
             }

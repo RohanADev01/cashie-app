@@ -1,153 +1,52 @@
 import Foundation
-import LocalAuthentication
 import SwiftUI
 import UIKit
 
-/// Gates the app behind biometric/device-passcode auth when the user has
-/// turned on "Privacy lock" in settings. Re-locks when the app moves to
-/// the background and re-evaluates on foreground.
+/// Face ID privacy lock was removed in 1.2. This service is kept as a no-op
+/// stub for source compatibility (RootView, PermissionsScreen, CashieApp still
+/// reference it via @EnvironmentObject), but it never locks the app, never
+/// shows the veil, and never prompts for biometrics. Users upgrading from 1.1
+/// who had the lock enabled simply have it disabled on next launch.
+///
+/// The old LocalAuthentication path was the cause of crashes on lifecycle
+/// transitions and the toggle-revert behaviour reported in TestFlight.
 @MainActor
 final class PrivacyLockService: ObservableObject {
+    /// Always false. Kept @Published so SwiftUI views that observe it compile
+    /// unchanged; with the stub it never flips on.
     @Published private(set) var isLocked: Bool = false
-    @Published private(set) var canEvaluate: Bool
+    /// Always false (we no longer evaluate biometric capability).
+    @Published private(set) var canEvaluate: Bool = false
 
-    private weak var settingsSource: AppContainer?
-    private var didEnterBackgroundObserver: NSObjectProtocol?
-    private var willResignActiveObserver: NSObjectProtocol?
-    private var willEnterForegroundObserver: NSObjectProtocol?
+    init() {}
 
-    init() {
-        var error: NSError?
-        let context = LAContext()
-        self.canEvaluate = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
-    }
-
-    /// Wires the service to the container so it can read the persisted
-    /// `privacyLockEnabled` flag at the right moment.
+    /// Disables any persisted privacy-lock setting so a 1.1 user who had the
+    /// lock on doesn't get stuck behind an invisible veil. Container calls
+    /// this once after bootstrap.
     func attach(to container: AppContainer) {
-        self.settingsSource = container
-        observeLifecycle()
-    }
-
-    private func observeLifecycle() {
-        let center = NotificationCenter.default
-        didEnterBackgroundObserver = center.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification,
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.lockIfEnabled()
-            }
+        if container.settings.privacyLockEnabled {
+            container.settings.privacyLockEnabled = false
         }
-        // Raise the veil the instant the app deactivates (app switcher, Control
-        // Center, an incoming call) so the system snapshot can never capture
-        // balances or transactions while the lock is enabled.
-        willResignActiveObserver = center.addObserver(
-            forName: UIApplication.willResignActiveNotification,
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.lockIfEnabled()
-            }
-        }
-        willEnterForegroundObserver = center.addObserver(
-            forName: UIApplication.willEnterForegroundNotification,
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.requestUnlockIfNeeded()
-            }
+        if container.user.hasFaceID {
+            container.user.hasFaceID = false
         }
     }
 
-    private func lockIfEnabled() {
-        guard let source = settingsSource, source.settings.privacyLockEnabled else { return }
-        isLocked = true
-    }
+    /// No-op: there is no lock veil in 1.2+.
+    func requestUnlockIfNeeded() {}
 
-    func requestUnlockIfNeeded() {
-        guard isLocked else { return }
-        guard canEvaluate else {
-            #if targetEnvironment(simulator)
-            // Simulator has no biometrics: passthrough so dev work isn't blocked.
-            isLocked = false
-            #else
-            // Real device that cannot evaluate biometrics/passcode: fail CLOSED.
-            // Never auto-reveal financial data; the user retries from the veil.
-            #endif
-            return
-        }
-        let context = LAContext()
-        context.localizedFallbackTitle = "Use passcode"
-        context.evaluatePolicy(.deviceOwnerAuthentication,
-                               localizedReason: "Unlock Cashie") { [weak self] success, _ in
-            Task { @MainActor in
-                if success { self?.isLocked = false }
-            }
-        }
-    }
+    /// No-op: biometric eligibility is irrelevant now.
+    func verifyEligibility() -> Bool { false }
 
-    /// Called when the user toggles the privacy lock on; verifies the device
-    /// can actually evaluate before letting them enable.
-    func verifyEligibility() -> Bool {
-        var error: NSError?
-        let context = LAContext()
-        let ok = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
-        canEvaluate = ok
-        return ok
-    }
-
-    /// Prompts Face ID / device passcode so the user can confirm turning the
-    /// lock on, and reports whether they authenticated. On a simulator without
-    /// enrolled biometrics it returns true so testing isn't blocked.
+    /// No-op: the Face ID enrollment prompt was removed. The completion is
+    /// reported as `false` so any lingering caller treats the toggle as "off".
     func authenticateToEnable(_ completion: @escaping (Bool) -> Void) {
-        var error: NSError?
-        let context = LAContext()
-        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
-            #if targetEnvironment(simulator)
-            completion(true)
-            #else
-            completion(false)
-            #endif
-            return
-        }
-        context.localizedFallbackTitle = "Use passcode"
-        context.evaluatePolicy(.deviceOwnerAuthentication,
-                               localizedReason: "Turn on Face ID to lock Cashie") { success, _ in
-            Task { @MainActor in completion(success) }
-        }
+        completion(false)
     }
 }
 
-/// Full-screen veil shown while the app is locked.
+/// Retained so previously-presented views compile, but never shown.
 struct PrivacyLockVeil: View {
     let onUnlock: () -> Void
-
-    var body: some View {
-        ZStack {
-            Theme.Palette.bg.ignoresSafeArea()
-            VStack(spacing: 18) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(Theme.Palette.gold)
-                    .padding(20)
-                    .background(Circle().fill(Theme.Palette.goldPastel))
-                Text("Cashie is locked")
-                    .font(AppFont.display(28, weight: .bold))
-                Text("Authenticate to see your money.")
-                    .font(AppFont.callout)
-                    .foregroundColor(Theme.Palette.inkSoft)
-                Button(action: onUnlock) {
-                    Text("Unlock")
-                        .font(AppFont.text(15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 12)
-                        .background(Capsule().fill(Theme.Palette.ink))
-                }
-                .buttonStyle(.plainTappable)
-                .padding(.top, 6)
-            }
-        }
-    }
+    var body: some View { EmptyView() }
 }

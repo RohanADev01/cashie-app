@@ -1,13 +1,27 @@
 import SwiftUI
 import UserNotifications
 
+/// Onboarding "permissions" step. Only notifications are surfaced; Face ID was
+/// removed (the lock veil and biometric prompt were causing crashes on
+/// foreground/background lifecycle right after this screen). The notifications
+/// toggle reads the real system authorization status, so users who already
+/// allowed see it on, and users who declined see it off.
 struct PermissionsScreen: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var privacyLock: PrivacyLockService
-    // Opt-in: both start off so the user actively chooses what they want,
-    // rather than having them switched on for them.
-    @State private var notifications = false
-    @State private var faceID = false
+    @Environment(\.scenePhase) private var scenePhase
+    /// Latest known iOS authorization status for notifications. Drives the
+    /// toggle so it reflects reality, not just local user intent.
+    @State private var notifStatus: UNAuthorizationStatus = .notDetermined
+    /// True while the request prompt is in flight, so onChange doesn't fire
+    /// twice (once for our optimistic flip, once when status refreshes).
+    @State private var requesting = false
+
+    private var notificationsOn: Binding<Bool> {
+        Binding(
+            get: { notifStatus == .authorized || notifStatus == .provisional },
+            set: { newValue in handleToggle(newValue) }
+        )
+    }
 
     var body: some View {
         ZStack {
@@ -27,7 +41,7 @@ struct PermissionsScreen: View {
                     font: AppFont.display(34, weight: .bold)
                 )
 
-                Text("Both off for now. Turn on whatever helps.")
+                Text("Turn on what helps. You can change it later in Settings → You.")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
                     .padding(.top, 4)
@@ -36,51 +50,79 @@ struct PermissionsScreen: View {
                     PermissionRow(emoji: "🔔",
                                   title: "Notifications",
                                   desc: "Goal wins, weekly Wrapped, gentle nudges only.",
-                                  isOn: $notifications)
-                    PermissionRow(emoji: "👤",
-                                  title: "Face ID",
-                                  desc: "Quick unlock. Keeps spending data private.",
-                                  isOn: $faceID)
+                                  isOn: notificationsOn)
                 }
                 .padding(.top, 18)
 
-                Text("You can change either later in Settings → You.")
-                    .font(AppFont.text(12))
-                    .foregroundColor(Theme.Palette.inkMute)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14)
+                if notifStatus == .denied {
+                    Text("Notifications are off in iOS Settings. Tap above to open Settings, or change it later in Settings → You.")
+                        .font(AppFont.text(12))
+                        .foregroundColor(Theme.Palette.inkMute)
+                        .padding(.top, 4)
+                }
 
                 Spacer()
 
                 PrimaryButton(title: "Continue") {
-                    container.user.hasFaceID = faceID
-                    container.user.hasNotifications = notifications
-                    // Engage the actual privacy lock when Face ID was enabled.
-                    container.settings.privacyLockEnabled = faceID
+                    let on = notifStatus == .authorized || notifStatus == .provisional
+                    container.user.hasNotifications = on
+                    // Privacy lock is always off in 1.2 (Face ID removed).
+                    container.settings.privacyLockEnabled = false
+                    container.user.hasFaceID = false
                     container.advanceOnboarding(to: .backTapIntro)
                 }
             }
             .padding(.horizontal, 26)
             .padding(.bottom, 28)
-            // Turning a toggle on fires the real system dialog. If the user
-            // declines, flip it back off so the UI reflects reality.
-            .onChange(of: notifications) { on in if on { requestNotifications() } }
-            .onChange(of: faceID) { on in if on { requestFaceID() } }
+        }
+        .task { await refreshAuthorizationStatus() }
+        .onChange(of: scenePhase) { phase in
+            // Returning from iOS Settings should refresh the toggle.
+            if phase == .active {
+                Task { await refreshAuthorizationStatus() }
+            }
+        }
+    }
+
+    private func handleToggle(_ newValue: Bool) {
+        if newValue {
+            switch notifStatus {
+            case .notDetermined:
+                requestNotifications()
+            case .denied:
+                // Can't re-prompt once denied; send the user to iOS Settings.
+                openSystemSettings()
+            case .authorized, .provisional, .ephemeral:
+                break  // Already on; nothing to do.
+            @unknown default:
+                requestNotifications()
+            }
+        } else {
+            // System notifications can only be turned off via iOS Settings.
+            openSystemSettings()
         }
     }
 
     private func requestNotifications() {
+        guard !requesting else { return }
+        requesting = true
         UNUserNotificationCenter.current()
-            .requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                DispatchQueue.main.async {
-                    if !granted { notifications = false }
+            .requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
+                Task { @MainActor in
+                    requesting = false
+                    await refreshAuthorizationStatus()
                 }
             }
     }
 
-    private func requestFaceID() {
-        privacyLock.authenticateToEnable { ok in
-            if !ok { faceID = false }
+    private func refreshAuthorizationStatus() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        await MainActor.run { notifStatus = settings.authorizationStatus }
+    }
+
+    private func openSystemSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
     }
 }

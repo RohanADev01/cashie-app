@@ -265,9 +265,10 @@ Two kinds, both ready to upload, in `screenshots/`:
 
 > **The app is iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`), so **no iPad
 > screenshots are needed or accepted** - App Store Connect won't show an iPad
-> slot. The `ipad_13_inch/` folder is left in the package for reference only;
-> ignore it. (iPhone-only also avoids the iPad multitasking-orientation upload
-> rejection a Universal portrait-only build hits.)
+> slot. An `ipad_13_inch/` set is still included in the package just in case you
+> ever go Universal; for this iPhone-only submission you can ignore it.
+> (iPhone-only also avoids the iPad multitasking-orientation upload rejection a
+> Universal portrait-only build hits.)
 
 > **Which iPhone set to upload:** App Store Connect accepts EITHER the 6.9" OR
 > the 6.5" set for iPhone - you do not need both. Upload whichever matches the
@@ -290,10 +291,10 @@ This is a real capture of the live single paywall, so the on-screen price
   tap-the-back-of-your-phone teaser, with the radiating-rings illustration).
   Captured from the latest build (redesigned home + the gamified rank/badges screens).
 
-The app ships **iPhone-only**, so the `ipad_13_inch/` set is not used (kept only
-for reference). If you ever decide to ship Universal, you would first make the
-screens iPad-adaptive (max-width / centered layout) and add all four iPad
-orientations - but that is out of scope for this iPhone-first launch.
+The app ships **iPhone-only**, so the `ipad_13_inch/` set is not used for this
+submission (included just in case you go Universal later). If you do, make the
+screens iPad-adaptive (max-width / centered layout) first - but that is out of
+scope for this iPhone-first launch.
 
 Regenerate anytime: `python3 scripts/gen_app_store_screenshots.py`.
 

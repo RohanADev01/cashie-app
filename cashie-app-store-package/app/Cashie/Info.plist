@@ -64,8 +64,6 @@
         <string>Inter-Bold.ttf</string>
         <string>Inter-Italic.ttf</string>
     </array>
-    <key>NSFaceIDUsageDescription</key>
-    <string>Cashie uses Face ID to keep your spending private and secure.</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

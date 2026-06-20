@@ -17,9 +17,24 @@ private typealias SKTransaction = StoreKit.Transaction
 final class StoreKitService: SubscriptionService {
     private static let subscribedKey = "isSubscribed"
 
+    /// Products we actively SELL on the paywall (loaded, priced, purchasable).
     private let productIDs: [String] = [
         "cashie_pro_monthly",
         "cashie_pro_yearly_v2"
+    ]
+
+    /// Every product id that grants Pro, INCLUDING legacy ids from earlier
+    /// builds. The yearly product was renamed (`cashie_pro_yearly` ->
+    /// `cashie_pro_yearly_v2`) and there were short-lived rescue tiers; anyone
+    /// who subscribed under an old id must stay unlocked even though we only sell
+    /// the two current products now. Checking only the sellable ids here was the
+    /// bug that bounced paid users back to the hard paywall after the rename.
+    private static let entitlementProductIDs: Set<String> = [
+        "cashie_pro_monthly",
+        "cashie_pro_yearly_v2",
+        "cashie_pro_yearly",          // legacy yearly (pre-rename)
+        "cashie_pro_yearly_mid",      // legacy rescue tier (removed)
+        "cashie_pro_yearly_special"   // legacy rescue tier (removed)
     ]
 
     private var loadedProducts: [String: Product] = [:]
@@ -109,7 +124,7 @@ final class StoreKitService: SubscriptionService {
         for await result in SKTransaction.currentEntitlements {
             if case .verified(let tx) = result,
                tx.revocationDate == nil,
-               productIDs.contains(tx.productID) {
+               Self.entitlementProductIDs.contains(tx.productID) {
                 return String(tx.originalID)
             }
         }
@@ -125,20 +140,16 @@ final class StoreKitService: SubscriptionService {
     }
 
     private func refreshFromCurrentEntitlements() async {
-        await Self.refreshFromCurrentEntitlementsStatic(productIDs: productIDs)
+        await Self.refreshFromCurrentEntitlementsStatic()
     }
 
-    private static func refreshFromCurrentEntitlementsStatic(productIDs: [String]? = nil) async {
-        let ids = productIDs ?? [
-            "cashie_pro_monthly", "cashie_pro_yearly_v2"
-        ]
+    private static func refreshFromCurrentEntitlementsStatic() async {
         var active = false
         for await result in SKTransaction.currentEntitlements {
-            if case .verified(let tx) = result, tx.revocationDate == nil {
-                if ids.contains(tx.productID) {
-                    active = true
-                    break
-                }
+            if case .verified(let tx) = result, tx.revocationDate == nil,
+               entitlementProductIDs.contains(tx.productID) {
+                active = true
+                break
             }
         }
         UserDefaults.standard.set(active, forKey: Self.subscribedKey)
