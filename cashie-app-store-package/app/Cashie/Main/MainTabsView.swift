@@ -23,7 +23,7 @@ struct MainTabsView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Theme.Palette.bg.ignoresSafeArea()
+            Theme.Palette.pageBottom.ignoresSafeArea()
 
             Group {
                 switch container.mainTab {
@@ -119,8 +119,8 @@ private struct TabBar: View {
             .padding(.top, 10)
             .padding(.bottom, 18)
             .background(
-                Theme.Palette.bg
-                    .overlay(Rectangle().fill(Theme.Palette.line).frame(height: 1), alignment: .top)
+                Theme.Palette.pageBottom
+                    .overlay(Rectangle().fill(Theme.Palette.lineSoft).frame(height: 1), alignment: .top)
             )
 
             Button(action: onQuickLog) {

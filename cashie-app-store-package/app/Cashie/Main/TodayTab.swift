@@ -8,22 +8,25 @@ struct TodayTab: View {
     @State private var showRanks = false
     @State private var showBadges = false
     @State private var detailCategory: SpendCategory?
+    @State private var detailGoal: Goal?
     @State private var mascotBob: CGFloat = 0
     @State private var mascotTilt: Double = -3
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 18) {
                     topbar
-                    paceRingHero.padding(.top, 18)
+                    paceRingHero
                     RankHeroCard(progress: container.rankProgress) { showRanks = true }
-                        .padding(.top, 14)
-                    whereItWentSection.padding(.top, 28)
-                    if let note = monthOverMonthNote {
-                        footerNote(note).padding(.top, 22)
+                    whereItWentSection
+                    if container.transactions.isEmpty {
+                        AddLogNudge(message: "Log your first spend to bring this to life")
+                            .padding(.top, 10)
+                    } else if let note = monthOverMonthNote {
+                        footerNote(note).padding(.top, 4)
                     }
                 }
                 .padding(.horizontal, 22)
@@ -33,6 +36,11 @@ struct TodayTab: View {
         }
         .sheet(item: $detailCategory) { cat in
             CategoryDetailSheet(category: cat)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $detailGoal) { g in
+            GoalDetailSheet(goal: g)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -89,8 +97,8 @@ struct TodayTab: View {
                     .foregroundColor(Theme.Palette.inkSoft)
                 EmphasizedHeadline(
                     raw: container.user.hasName
-                        ? "Hey, <em>\(container.user.firstName).</em>"
-                        : "<em>Hey there.</em>",
+                        ? "Hey, <em>\(container.user.firstName)</em>"
+                        : "<em>Hey there</em>",
                     font: AppFont.display(36, weight: .bold),
                     emColor: Theme.Palette.gold
                 )
@@ -123,11 +131,11 @@ struct TodayTab: View {
     // MARK: - Pace ring hero
     //
     // Single consolidated hero (replaces the old Safe-to-spend / This-month /
-    // This-week trio). Tappable: opens the same Manage Budgets sheet the
-    // Spend tab uses, so users can adjust their monthly caps from home.
+    // This-week trio). Tapping it jumps to the Spend tab for the full breakdown
+    // (budgets are still editable there via "Set budgets").
 
     private var paceRingHero: some View {
-        Button { showBudgets = true } label: {
+        Button { container.mainTab = .spend } label: {
             PaceRingCard(
                 safeToSpendWhole: amountWhole,
                 safeToSpendCents: amountCents,
@@ -168,53 +176,56 @@ struct TodayTab: View {
                         .font(AppFont.text(17, weight: .bold))
                         .foregroundColor(Theme.Palette.ink)
                     Spacer()
-                    Text("This month →")
-                        .font(AppFont.text(11, weight: .medium))
-                        .tracking(0.5)
-                        .textCase(.uppercase)
-                        .foregroundColor(Theme.Palette.gold)
+                    PillLink(title: "This month")
                 }
                 .padding(.bottom, 4)
             }
             .buttonStyle(.plainTappable)
-            if topCategories.isEmpty {
-                Text("Nothing logged yet this month.")
-                    .font(AppFont.text(13))
-                    .foregroundColor(Theme.Palette.inkMute)
-                    .padding(.vertical, 18)
-                    .frame(maxWidth: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
-                    .padding(.top, 6)
-            } else {
-                if container.monthDepositsTotal > 0 {
-                    Button { showMonthBreakdown = true } label: {
-                        SavingRow(amount: container.monthDepositsTotal,
-                                  goalCount: depositGoalCount)
+            // Saving goals lead the section, in their own labelled block: each
+            // row shows how the goal is tracking toward its target (an overall
+            // figure, not a this-month one - hence the separate heading). New
+            // goals read $0 until the first deposit. Tapping a goal opens the
+            // same detail sheet used on the Goals tab.
+            if !container.activeGoals.isEmpty {
+                sectionHeading("Saving goals").padding(.top, 6).padding(.bottom, 2)
+                ForEach(container.activeGoals) { goal in
+                    Button { detailGoal = goal } label: {
+                        GoalProgressRow(goal: goal)
                     }
                     .buttonStyle(.plainTappable)
                 }
-                ForEach(topCategories, id: \.0) { item in
-                    Button { detailCategory = item.0 } label: {
-                        CategoryRowFull(
-                            category: item.0,
-                            spent: item.1,
-                            cap: item.2,
-                            tint: tint(spent: item.1, cap: item.2)
-                        )
-                    }
-                    .buttonStyle(.plainTappable)
+                Divider().background(Theme.Palette.lineSoft)
+                sectionHeading("Spending").padding(.top, 12).padding(.bottom, 2)
+            }
+            // Every category is always listed so the section stays full even on
+            // a fresh account: ones with spend sort to the top, the rest sit at
+            // the bottom showing $0 until something lands in them.
+            ForEach(displayCategories, id: \.0) { item in
+                Button { detailCategory = item.0 } label: {
+                    CategoryRowFull(
+                        category: item.0,
+                        spent: item.1,
+                        cap: item.2
+                    )
                 }
+                .buttonStyle(.plainTappable)
             }
         }
+        .padding(18)
+        .softCard(20)
     }
 
-    /// Number of distinct goals that received at least one deposit this
-    /// month - used in the "Saving" row's "across N goals" subline.
-    private var depositGoalCount: Int {
-        let cal = Calendar.current
-        return container.goals.filter { goal in
-            goal.deposits.contains { cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
-        }.count
+    /// Small uppercase group label used to separate the goals and spending
+    /// blocks inside "Where it went", matching the subheads used in the sheets.
+    private func sectionHeading(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(AppFont.text(11, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundColor(Theme.Palette.inkSoft)
+            Spacer()
+        }
     }
 
     // MARK: - Footer note
@@ -283,72 +294,27 @@ struct TodayTab: View {
     }
 
 
-    private var topCategories: [(SpendCategory, Double, Double)] {
-        container.budgets
-            .compactMap { b -> (SpendCategory, Double, Double)? in
-                let spent = container.monthSpend(in: b.category)
-                guard spent > 0 else { return nil }
-                return (b.category, spent, b.monthlyCap)
-            }
-            .sorted { $0.1 > $1.1 }
-            .prefix(3)
-            .map { $0 }
-    }
+    /// Every spend category (income excluded), each with this month's spend and
+    /// its monthly cap. Sorted by spend descending so active categories lead and
+    /// untouched ones fall to the bottom at $0, keeping the section full even
+    /// before anything is logged. Ties (e.g. all $0) keep the canonical
+    /// category order so the list is stable.
+    private var displayCategories: [(SpendCategory, Double, Double)] {
+        var caps: [SpendCategory: Double] = [:]
+        for b in container.budgets { caps[b.category] = b.monthlyCap }
 
-    /// Brand green by default; red only once the category is over its
-    /// monthly cap.
-    private func tint(spent: Double, cap: Double) -> Color {
-        guard cap > 0 else { return Theme.Palette.gold }
-        return spent > cap ? Theme.Palette.red : Theme.Palette.gold
-    }
-}
-
-// MARK: - Section head + divider label
-
-private struct SectionHead: View {
-    let title: String
-    let trailing: String?
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(AppFont.text(17, weight: .bold))
-                .foregroundColor(Theme.Palette.ink)
-            Spacer()
-            if let trailing {
-                Text(trailing)
-                    .font(AppFont.text(11, weight: .medium))
-                    .tracking(0.5)
-                    .textCase(.uppercase)
-                    .foregroundColor(Theme.Palette.inkSoft)
-            }
+        let ordered: [SpendCategory] = SpendCategory.allCases.filter { $0 != .income }
+        var rows: [(category: SpendCategory, spent: Double, cap: Double, order: Int)] = []
+        for (idx, cat) in ordered.enumerated() {
+            let spent = container.monthSpend(in: cat)
+            rows.append((category: cat, spent: spent, cap: caps[cat] ?? 0, order: idx))
         }
-        .padding(.bottom, 4)
-    }
-}
-
-private struct DividerLabel: View {
-    let text: String
-    let numeral: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(text)
-                    .font(AppFont.text(11, weight: .semibold))
-                    .tracking(0.6)
-                    .textCase(.uppercase)
-                    .foregroundColor(Theme.Palette.ink)
-                Spacer()
-                Text(numeral)
-                    .font(AppFont.text(11, weight: .semibold))
-                    .foregroundColor(Theme.Palette.inkMute)
-            }
-            .padding(.bottom, 8)
-            Rectangle().fill(Theme.Palette.line).frame(height: 1)
+        rows.sort { lhs, rhs in
+            lhs.spent != rhs.spent ? lhs.spent > rhs.spent : lhs.order < rhs.order
         }
-        .padding(.bottom, 6)
+        return rows.map { ($0.category, $0.spent, $0.cap) }
     }
+
 }
 
 // MARK: - Category row
@@ -357,12 +323,36 @@ private struct CategoryRowFull: View {
     let category: SpendCategory
     let spent: Double
     let cap: Double
-    let tint: Color
+
+    // Three states once a cap is set: on track (green), approaching the cap
+    // (amber, from 80%), and at/over the cap (red). The bar, a light wash behind
+    // the icon, and the amount on the right all share the state colour.
+    private var isOver: Bool { cap > 0 && spent >= cap }
+    private var isNear: Bool { cap > 0 && spent >= cap * 0.8 && spent < cap }
+
+    private var stateColor: Color {
+        if isOver { return Theme.Palette.red }
+        if isNear { return Theme.Palette.winGold }
+        return Theme.Palette.gold
+    }
+    private var iconBackground: Color {
+        if isOver { return Theme.Palette.red.opacity(0.10) }
+        if isNear { return Theme.Palette.winGold.opacity(0.16) }
+        return Theme.Palette.bgCream
+    }
+    private var amountColor: Color {
+        if isOver { return Theme.Palette.red }
+        if isNear { return Theme.Palette.winGold }
+        return spent > 0 ? Theme.Palette.ink : Theme.Palette.inkMute
+    }
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                GlassTile(cornerRadius: 12)
+                let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+                shape
+                    .fill(iconBackground)
+                    .overlay(shape.stroke(Theme.Palette.line.opacity(0.7), lineWidth: 1))
                 Text(category.emoji).font(.system(size: 18))
             }
             .frame(width: 42, height: 42)
@@ -375,7 +365,7 @@ private struct CategoryRowFull: View {
                     ZStack(alignment: .leading) {
                         Capsule().fill(Theme.Palette.ink.opacity(0.06))
                         Capsule()
-                            .fill(tint)
+                            .fill(stateColor)
                             .frame(width: proxy.size.width * progress)
                     }
                 }
@@ -385,18 +375,14 @@ private struct CategoryRowFull: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Text(Money.format(spent))
                     .font(AppFont.text(14, weight: .semibold))
-                    .foregroundColor(Theme.Palette.ink)
+                    .foregroundColor(amountColor)
                     .monospacedDigit()
-                Text("of \(Money.format(cap))")
+                Text(cap > 0 ? "of \(Money.format(cap))" : "No cap set")
                     .font(AppFont.text(11))
                     .foregroundColor(Theme.Palette.inkSoft)
             }
         }
         .padding(.vertical, 14)
-        .overlay(
-            Rectangle().fill(Theme.Palette.lineSoft).frame(height: 1),
-            alignment: .bottom
-        )
     }
 
     private var progress: CGFloat {
@@ -405,43 +391,49 @@ private struct CategoryRowFull: View {
     }
 }
 
-/// Synthetic "Saving" row that sits in Where it Went so users see goal
-/// deposits as part of the month's outflows alongside expenses.
-private struct SavingRow: View {
-    let amount: Double
-    let goalCount: Int
+/// One saving goal inside "Where it went". Mirrors `CategoryRowFull` so the
+/// section reads as one family: emoji tile, name, and a progress bar - but the
+/// bar tracks the goal's overall progress toward its target (saved / target),
+/// which is what tells the user how they're doing. A brand-new goal shows $0
+/// with an empty bar. Funded goals switch the bar to the celebration gold.
+private struct GoalProgressRow: View {
+    let goal: Goal
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
                 GlassTile(cornerRadius: 12)
-                Text("🌱").font(.system(size: 18))
+                Text(goal.emoji).font(.system(size: 18))
             }
             .frame(width: 42, height: 42)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Saving")
+            VStack(alignment: .leading, spacing: 7) {
+                Text(goal.name)
                     .font(AppFont.text(14, weight: .medium))
                     .foregroundColor(Theme.Palette.ink)
-                Text(goalCount == 1
-                     ? "From this month's budget · 1 goal"
-                     : "From this month's budget · \(goalCount) goals")
+                    .lineLimit(1)
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.Palette.ink.opacity(0.06))
+                        Capsule()
+                            .fill(goal.isAchieved ? Theme.Palette.winGold : Theme.Palette.gold)
+                            .frame(width: proxy.size.width * CGFloat(goal.progress))
+                    }
+                }
+                .frame(height: 4)
+            }
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(Money.format(goal.currentAmount))
+                    .font(AppFont.text(14, weight: .semibold))
+                    .foregroundColor(goal.currentAmount > 0 ? Theme.Palette.ink : Theme.Palette.inkMute)
+                    .monospacedDigit()
+                Text("of \(Money.format(goal.targetAmount))")
                     .font(AppFont.text(11))
                     .foregroundColor(Theme.Palette.inkSoft)
             }
-
-            Spacer()
-
-            Text(Money.format(amount))
-                .font(AppFont.text(14, weight: .semibold))
-                .foregroundColor(Theme.Palette.ink)
-                .monospacedDigit()
         }
         .padding(.vertical, 14)
-        .overlay(
-            Rectangle().fill(Theme.Palette.lineSoft).frame(height: 1),
-            alignment: .bottom
-        )
     }
 }
 

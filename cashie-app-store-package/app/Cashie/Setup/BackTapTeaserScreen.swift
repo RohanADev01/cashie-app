@@ -3,10 +3,11 @@ import SwiftUI
 struct BackTapTeaserScreen: View {
     @EnvironmentObject var container: AppContainer
 
+    // Apple Pay is temporarily removed; only Back Tap + Action Button are offered.
+    // Restore the `.applePaySetup` row to bring it back.
     private let methods: [(icon: String, title: String, blurb: String, target: OnboardingStep)] = [
         ("hand.tap.fill", "Back Tap", "Triple-tap the back of your phone.", .backTapSetup),
         ("bolt.fill", "Action Button", "One press on iPhone 15 Pro and newer.", .actionButtonSetup),
-        ("creditcard.fill", "Apple Pay", "Logs right after you pay with Apple Pay.", .applePaySetup)
     ]
 
     var body: some View {
@@ -26,7 +27,7 @@ struct BackTapTeaserScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 EmphasizedHeadline(
-                    raw: "Three ways to <em>log a spend.</em>",
+                    raw: "Two ways to <em>log a spend.</em>",
                     font: AppFont.display(38, weight: .bold)
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)

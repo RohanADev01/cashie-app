@@ -14,7 +14,7 @@ struct TraitsScreen: View {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {
                 BackBar(onBack: { container.advanceOnboarding(to: .reveal) },
-                        pageLabel: "Profile · 02 / 05")
+                        pageLabel: "Profile · 02 / 04")
 
                 Text("Your traits")
                     .font(AppFont.text(11, weight: .semibold))

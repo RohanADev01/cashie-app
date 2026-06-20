@@ -15,6 +15,9 @@ import SwiftUI
 struct QuickLogKeyCard: View {
     var importShortcutURL: URL? = URL(string: Config.quickLogShortcutImportURL)
     var assignStep: String = "Assign the shortcut to Back Tap or the Action Button."
+    /// When false, the numbered 1–4 steps are omitted (the setup screens render
+    /// them separately via `QuickLogStepsCard`, above the visual guide).
+    var showSteps: Bool = true
 
     @EnvironmentObject var container: AppContainer
 
@@ -24,7 +27,6 @@ struct QuickLogKeyCard: View {
     @State private var loadState: LoadState = .loading
     @State private var revealed = false
     @State private var copied = false
-    @State private var resetting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -118,28 +120,19 @@ struct QuickLogKeyCard: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                step("1", "Copy your API key.")
-                step("2", "Tap Import Shortcut, then Add Shortcut in the Shortcuts app.")
-                step("3", "Paste your key into the x-api-key prompt.")
-                step("4", assignStep)
+            if showSteps {
+                VStack(alignment: .leading, spacing: 8) {
+                    step("1", "Copy your API key.")
+                    step("2", "Tap Import Shortcut, then Add Shortcut in the Shortcuts app.")
+                    step("3", "Paste your API key when prompted.")
+                    step("4", assignStep)
+                }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
 
             Text("Your key is private. It can only add a spend, never read or delete your data.")
                 .font(AppFont.text(11))
                 .foregroundColor(Theme.Palette.inkMute)
-
-            if loadState == .ready {
-                Button(action: { Task { await resetKey() } }) {
-                    Text(resetting ? "Resetting…" : "Reset key")
-                        .font(AppFont.text(11, weight: .semibold))
-                        .underline()
-                        .foregroundColor(Theme.Palette.inkSoft)
-                }
-                .buttonStyle(.plainTappable)
-                .disabled(resetting)
-            }
         }
     }
 
@@ -165,12 +158,6 @@ struct QuickLogKeyCard: View {
         apply(await container.quickLogKey())
     }
 
-    private func resetKey() async {
-        resetting = true
-        apply(await container.quickLogKey(reset: true))
-        resetting = false
-    }
-
     private func apply(_ result: AppContainer.QuickLogKeyResult) {
         switch result {
         case .ready(let k):
@@ -181,6 +168,40 @@ struct QuickLogKeyCard: View {
         case .unavailable:
             loadState = .unavailable
         }
+    }
+
+    private func step(_ number: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(number)
+                .font(AppFont.text(11, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(Theme.Palette.ink))
+            Text(text)
+                .font(AppFont.text(13))
+                .foregroundColor(Theme.Palette.ink)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// The numbered 1–4 setup steps (Copy key → Import → Paste → Assign), in a card
+/// of their own. Pulled out of `QuickLogKeyCard` so the setup screens can show
+/// the steps first, then the visual guide, then the key controls.
+struct QuickLogStepsCard: View {
+    var assignStep: String = "Assign the shortcut to Back Tap or the Action Button."
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            step("1", "Copy your API key.")
+            step("2", "Tap Import Shortcut, then Add Shortcut in the Shortcuts app.")
+            step("3", "Paste your API key when prompted.")
+            step("4", assignStep)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
     }
 
     private func step(_ number: String, _ text: String) -> some View {

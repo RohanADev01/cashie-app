@@ -12,16 +12,16 @@ enum SampleData {
             Transaction(merchant: "Don Antonio", amount: 18, category: .food, date: ago(0, hour: 19, minute: 12), source: .quicklog),
             Transaction(merchant: "Blue Bottle", amount: 5.50, category: .food, date: ago(0, hour: 9, minute: 41)),
             Transaction(merchant: "Lyft", amount: 14.20, category: .transport, date: ago(1, hour: 22, minute: 8)),
-            Transaction(merchant: "Whole Foods", amount: 62.40, category: .food, date: ago(1, hour: 18, minute: 55)),
+            Transaction(merchant: "Whole Foods", amount: 16.40, category: .food, date: ago(1, hour: 18, minute: 55)),
             Transaction(merchant: "Salary · Acme", amount: 3200, category: .income, date: ago(2, hour: 9), source: .bank),
-            Transaction(merchant: "Uniqlo", amount: 78, category: .shopping, date: ago(3, hour: 14, minute: 22)),
+            Transaction(merchant: "Uniqlo", amount: 38, category: .shopping, date: ago(3, hour: 14, minute: 22)),
             Transaction(merchant: "Netflix", amount: 15.99, category: .bills, date: ago(3, hour: 6)),
-            Transaction(merchant: "Bar Belly", amount: 42, category: .fun, date: ago(4, hour: 22, minute: 30), source: .quicklog),
+            Transaction(merchant: "Bar Belly", amount: 24, category: .fun, date: ago(4, hour: 22, minute: 30), source: .quicklog),
             Transaction(merchant: "Tartine", amount: 8.50, category: .food, date: ago(5, hour: 8, minute: 12)),
-            Transaction(merchant: "Trader Joe's", amount: 38.10, category: .food, date: ago(5, hour: 19, minute: 4)),
+            Transaction(merchant: "Trader Joe's", amount: 10.10, category: .food, date: ago(5, hour: 19, minute: 4)),
             Transaction(merchant: "Spotify", amount: 11.99, category: .bills, date: ago(6)),
-            Transaction(merchant: "Equinox", amount: 215, category: .health, date: ago(6, hour: 7, minute: 30)),
-            Transaction(merchant: "Shake Shack", amount: 16.20, category: .food, date: ago(7, hour: 13, minute: 5)),
+            Transaction(merchant: "Equinox", amount: 32, category: .health, date: ago(6, hour: 7, minute: 30)),
+            Transaction(merchant: "Shake Shack", amount: 8.20, category: .food, date: ago(7, hour: 13, minute: 5)),
             // An isolated older log ~2 weeks before the recent cluster, so the
             // weeks in between have no activity. Lets us test the shield block
             // on an "empty week" (a week the user never logged in).

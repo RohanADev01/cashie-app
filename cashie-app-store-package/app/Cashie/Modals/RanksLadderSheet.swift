@@ -80,7 +80,7 @@ struct RanksLadderSheet: View {
                 .textCase(.uppercase)
                 .foregroundColor(.white.opacity(0.5))
             EmphasizedHeadline(
-                raw: "Your <em>rank.</em>",
+                raw: "Your <em>rank</em>",
                 font: AppFont.display(36, weight: .bold),
                 emColor: rank.midtone
             )

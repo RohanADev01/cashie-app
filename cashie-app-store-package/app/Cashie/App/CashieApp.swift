@@ -6,6 +6,22 @@ struct CashieApp: App {
     @StateObject private var privacyLock: PrivacyLockService
 
     init() {
+        #if DEBUG
+        // -emptyStore seeds a clean, EMPTY account (no transactions/goals, just
+        // the default category budgets) so the simulator can preview true
+        // first-run empty states. Must run before AppContainer is built, since
+        // the store service reads its seed in its initializer. Compiled out of
+        // release builds.
+        if ProcessInfo.processInfo.arguments.contains("-emptyStore") {
+            LocalStore.shared.wipe()
+            LocalStore.shared.save([Transaction](), key: LocalStore.Key.transactions)
+            LocalStore.shared.save([Goal](), key: LocalStore.Key.goals)
+            LocalStore.shared.save([AppNotification](), key: LocalStore.Key.notifications)
+            LocalStore.shared.save(CategoryBudget.seed, key: LocalStore.Key.budgets)
+            LocalStore.shared.save(AppSettings(), key: LocalStore.Key.settings)
+            UserDefaults.standard.set(true, forKey: LocalStore.Key.seeded)
+        }
+        #endif
         // Subscriptions run on native StoreKit 2 (no third-party SDK). The
         // simulator opens the real iOS purchase sheet via the Cashie.storekit
         // configuration on the scheme; device + App Store builds talk to the
@@ -75,6 +91,7 @@ struct CashieApp: App {
                     await container.bootstrap()
                     privacyLock.attach(to: container)
                     await ReminderScheduler.sync(with: container.settings)
+                    await ReminderScheduler.scheduleRateReminderIfNeeded()
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-syncSelfTest") {
                         await container.runSyncSelfTest()
@@ -103,7 +120,6 @@ private extension SessionState {
         case "reveal": return .onboarding(.reveal)
         case "traits": return .onboarding(.traits)
         case "pain": return .onboarding(.pain)
-        case "solution": return .onboarding(.solution)
         case "effort": return .onboarding(.effort)
         case "social": return .onboarding(.socialProof)
         case "reviews": return .onboarding(.reviews)
@@ -114,10 +130,10 @@ private extension SessionState {
         case "permissions": return .onboarding(.permissions)
         case "backTapIntro": return .onboarding(.backTapIntro)
         case "backTap": return .onboarding(.backTapTeaser)
+        case "backTapSetup": return .onboarding(.backTapSetup)
         case "actionButton": return .onboarding(.actionButtonSetup)
         case "applePay": return .onboarding(.applePaySetup)
         case "currency": return .onboarding(.currency)
-        case "tryLive": return .onboarding(.tryLive)
         case "ready": return .onboarding(.ready)
         case "main": return .main
         default: return nil

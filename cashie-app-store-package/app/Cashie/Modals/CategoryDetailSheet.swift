@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Drill-in for one category, shows progress against the cap, the
 /// transactions that hit it this month, and lets the user edit the cap.
+/// Styled like the main screens and the goal detail sheet: a light page
+/// background with white `softCard`s.
 struct CategoryDetailSheet: View {
     let category: SpendCategory
     @EnvironmentObject var container: AppContainer
@@ -10,16 +12,19 @@ struct CategoryDetailSheet: View {
     @State private var editing = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                header
-                progressCard
-                budgetEditor
-                txList
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    progressCard
+                    budgetEditor
+                    txList
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
-            .padding(.bottom, 30)
         }
     }
 
@@ -28,8 +33,11 @@ struct CategoryDetailSheet: View {
     private var header: some View {
         HStack(spacing: 14) {
             ZStack {
-                GlassTile(cornerRadius: 12)
-                Text(category.emoji).font(.system(size: 22))
+                let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+                shape
+                    .fill(iconBackground)
+                    .overlay(shape.stroke(Theme.Palette.line.opacity(0.7), lineWidth: 1))
+                Text(category.emoji).font(.system(size: 24))
             }
             .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 2) {
@@ -79,7 +87,7 @@ struct CategoryDetailSheet: View {
             HStack {
                 Label(remainingLabel, systemImage: remaining >= 0 ? "checkmark.seal" : "exclamationmark.triangle")
                     .font(AppFont.text(13, weight: .semibold))
-                    .foregroundColor(remaining >= 0 ? Theme.Palette.gold : Theme.Palette.red)
+                    .foregroundColor(progressColor)
                 Spacer()
                 Text("\(Int(progress * 100))% used")
                     .font(AppFont.text(13))
@@ -87,8 +95,8 @@ struct CategoryDetailSheet: View {
             }
         }
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 
     private var budgetEditor: some View {
@@ -117,13 +125,13 @@ struct CategoryDetailSheet: View {
                     .foregroundColor(Theme.Palette.inkSoft)
             }
         }
-        .padding(18)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 
     private var txList: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Transactions")
                     .font(AppFont.text(11, weight: .semibold))
@@ -139,9 +147,7 @@ struct CategoryDetailSheet: View {
                 Text("No \(category.label.lowercased()) spend yet this month.")
                     .font(AppFont.text(13))
                     .foregroundColor(Theme.Palette.inkMute)
-                    .padding(.vertical, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
+                    .padding(.vertical, 10)
             } else {
                 VStack(spacing: 0) {
                     ForEach(monthTransactions) { tx in
@@ -151,10 +157,11 @@ struct CategoryDetailSheet: View {
                         }
                     }
                 }
-                .padding(.horizontal, 14)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .softCard()
     }
 
     // MARK: - Derived
@@ -173,10 +180,18 @@ struct CategoryDetailSheet: View {
             ? "\(Money.format(remaining)) left"
             : "\(Money.format(abs(remaining))) over"
     }
-    /// Same threshold as the Today tab "Where it went" rows: green under 80%
-    /// of the cap, red at/above 80% - keeps the language consistent.
+    /// Same three states as the Today tab "Where it went" rows: green on track,
+    /// amber from 80% of the cap, red at/over it — keeps the language consistent.
     private var progressColor: Color {
-        progress >= 0.80 ? Theme.Palette.red : Theme.Palette.gold
+        if spent >= cap && cap > 0 { return Theme.Palette.red }
+        if progress >= 0.80 { return Theme.Palette.winGold }
+        return Theme.Palette.gold
+    }
+    /// Matches the home row's icon tile: a light wash of the state colour.
+    private var iconBackground: Color {
+        if spent >= cap && cap > 0 { return Theme.Palette.red.opacity(0.10) }
+        if progress >= 0.80 { return Theme.Palette.winGold.opacity(0.16) }
+        return Theme.Palette.bgCream
     }
     private var monthTransactions: [Transaction] {
         let cal = Calendar.current
@@ -188,5 +203,3 @@ struct CategoryDetailSheet: View {
             .sorted { $0.date > $1.date }
     }
 }
-
-

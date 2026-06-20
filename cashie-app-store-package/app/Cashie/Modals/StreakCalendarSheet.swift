@@ -1,11 +1,18 @@
 import SwiftUI
 
 /// Full-screen streak view reached by tapping the streak card on the You tab.
-/// Dark and gamified like the rank page: a living fiery gradient with drifting
-/// embers behind a translucent month calendar. Logged days catch fire,
-/// shielded days show a shield, missed days sit open. Tap a missed day in a
-/// week you logged in (with shields left) to spend a shield and bridge the
-/// gap; the streak chain crosses months. Page back to see earlier months.
+/// Light "paper" UI to match the rest of the app: a clean page background with
+/// white floating cards. The one splash of colour is the orange gradient hero
+/// (the streak count) and the warm fire-gradient on logged days. Logged days
+/// catch fire, shielded days show a shield, missed days sit open. Tap a missed
+/// day in a week you logged in (with shields left) to spend a shield and bridge
+/// the gap; the streak chain crosses months. Page back to see earlier months.
+///
+/// Rendering is deliberately static: day cells are plain gradient/flat circles
+/// with no per-day looping animation, so a full month of logged days stays
+/// cheap to scroll and stable to tap (the old flickering-ember cells, one
+/// `repeatForever` animation each, made the page lag and could crash on shield
+/// taps).
 struct StreakCalendarSheet: View {
     @EnvironmentObject var container: AppContainer
     @Environment(\.dismiss) private var dismiss
@@ -28,15 +35,22 @@ struct StreakCalendarSheet: View {
     @State private var toastToken = 0
 
     private let fire = [Color(hex: 0xFF5E3A), Color(hex: 0xFF823C), Color(hex: 0xFFB24D)]
-    private let fireStroke = Color(hex: 0xFF5E3A)
     private let fireAccent = Color(hex: 0xFF7A2E)
     private let shield = [Color(hex: 0x5AB0FF), Color(hex: 0x2F86E8)]
     private let shieldDeep = Color(hex: 0x1E6FD9)
 
+    /// Parses the `yyyy-MM-dd` shield keys back to dates for week grouping.
+    private static let keyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar.current
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     var body: some View {
-        ZStack(alignment: .top) {
-            DarkFireBackground(accent: fireAccent, warm: fire[2])
-                .ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            Theme.pageBackground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 18) {
                     topBar
@@ -47,8 +61,8 @@ struct StreakCalendarSheet: View {
                 .padding(.horizontal, 22)
                 .padding(.bottom, 30)
             }
-            // Always mounted; visibility is driven by opacity/offset so the
-            // continuously-animating fire circles can't cut its transition short.
+            // Toast sits at the bottom so it never covers the streak number in
+            // the hero. Always mounted; visibility is driven by opacity/offset.
             toast
         }
     }
@@ -59,28 +73,28 @@ struct StreakCalendarSheet: View {
         HStack {
             Text("Your streak")
                 .font(AppFont.display(28, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.Palette.ink)
             Spacer()
             Button { dismiss() } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white.opacity(0.9))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Theme.Palette.ink)
                     .frame(width: 34, height: 34)
-                    .background(Circle().fill(Color.white.opacity(0.12)))
+                    .background(Circle().fill(Theme.Palette.bgCream))
             }
             .buttonStyle(.plainTappable)
         }
         .padding(.top, 16)
     }
 
-    // MARK: - Hero (mirrors the You-tab streak card)
+    // MARK: - Hero (orange gradient, mirrors the You-tab streak card)
 
     private var hero: some View {
         ZStack {
             LinearGradient(colors: fire, startPoint: .topLeading, endPoint: .bottomTrailing)
             RadialGradient(colors: [.white.opacity(0.32), .clear],
                            center: .topTrailing, startRadius: 4, endRadius: 240)
-            RadialGradient(colors: [.black.opacity(0.12), .clear],
+            RadialGradient(colors: [.black.opacity(0.10), .clear],
                            center: .bottomLeading, startRadius: 4, endRadius: 220)
             HStack(spacing: 16) {
                 ZStack {
@@ -115,9 +129,11 @@ struct StreakCalendarSheet: View {
             }
             .padding(20)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(fireStroke.opacity(0.5), lineWidth: 1))
-        .shadow(color: fireStroke.opacity(0.5), radius: 16, x: 0, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        // Soft neutral shadow so it floats like every other card (flat paper),
+        // instead of the old heavy coloured glow.
+        .shadow(color: Color.black.opacity(0.06), radius: 18, x: 0, y: 9)
+        .shadow(color: Color.black.opacity(0.03), radius: 2, x: 0, y: 1)
     }
 
     private var shieldsLine: some View {
@@ -130,18 +146,21 @@ struct StreakCalendarSheet: View {
         .foregroundColor(.white.opacity(0.92))
     }
 
-    // MARK: - Calendar (translucent so the gradient shows through)
+    // MARK: - Calendar (white paper card)
 
     private var calendarCard: some View {
-        let logged = container.loggedDayKeys
-        let shielded = container.shieldedDayKeys
+        // Precomputed once per render so each day cell is O(1): the cached
+        // logged/shielded sets, the set of weeks that had a log, and shields
+        // already spent per week. (The old code re-derived all of this from
+        // scratch inside every one of the ~40 cells.)
+        let ctx = monthContext
         return VStack(spacing: 14) {
             monthHeader
             HStack(spacing: 0) {
                 ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, s in
                     Text(s)
                         .font(AppFont.text(10, weight: .bold))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(Theme.Palette.inkMute)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -151,7 +170,7 @@ struct StreakCalendarSheet: View {
             ) {
                 ForEach(Array(monthCells.enumerated()), id: \.offset) { _, cell in
                     if let date = cell {
-                        dayCircle(date: date, logged: logged, shielded: shielded)
+                        dayCircle(date: date, ctx: ctx)
                     } else {
                         Color.clear.frame(height: 42)
                     }
@@ -159,8 +178,7 @@ struct StreakCalendarSheet: View {
             }
         }
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 18).fill(Color.white.opacity(0.07)))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.14), lineWidth: 1))
+        .softCard(18)
     }
 
     private var monthHeader: some View {
@@ -170,7 +188,7 @@ struct StreakCalendarSheet: View {
             Text(monthTitle)
                 .font(AppFont.text(14, weight: .bold))
                 .tracking(0.5)
-                .foregroundColor(.white)
+                .foregroundColor(Theme.Palette.ink)
             Spacer()
             navButton("chevron.right", enabled: canGoForward) { step(1) }
         }
@@ -180,9 +198,9 @@ struct StreakCalendarSheet: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(enabled ? .white : .white.opacity(0.25))
+                .foregroundColor(enabled ? Theme.Palette.ink : Theme.Palette.inkFaint)
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(Color.white.opacity(0.1)))
+                .background(Circle().fill(Theme.Palette.bgCream))
         }
         .buttonStyle(.plainTappable)
         .disabled(!enabled)
@@ -190,14 +208,14 @@ struct StreakCalendarSheet: View {
     }
 
     @ViewBuilder
-    private func dayCircle(date: Date, logged: Set<String>, shielded: Set<String>) -> some View {
+    private func dayCircle(date: Date, ctx: MonthContext) -> some View {
         let cal = Calendar.current
         let key = container.dayKey(date)
-        let isLogged = logged.contains(key)
-        let isShielded = shielded.contains(key)
+        let isLogged = ctx.logged.contains(key)
+        let isShielded = ctx.shielded.contains(key)
         let isToday = cal.isDateInToday(date)
         let isFuture = cal.startOfDay(for: date) > cal.startOfDay(for: Date())
-        let eligible = !isLogged && !isShielded && !isFuture && container.canShield(date)
+        let eligible = !isLogged && !isShielded && !isFuture && ctx.canShield(date, weekKey: weekKey(date))
         let dayNum = cal.component(.day, from: date)
         let popped = justShielded == key
 
@@ -206,7 +224,7 @@ struct StreakCalendarSheet: View {
         } label: {
             ZStack {
                 fill(isLogged: isLogged, isShielded: isShielded, isFuture: isFuture,
-                     eligible: eligible, phase: Double(dayNum) * 0.08)
+                     eligible: eligible)
                     .frame(width: 38, height: 38)
                 Text("\(dayNum)")
                     .font(AppFont.text(13, weight: isLogged || isShielded ? .bold : .medium))
@@ -227,7 +245,7 @@ struct StreakCalendarSheet: View {
             }
             .overlay {
                 if isToday {
-                    Circle().stroke(Color.white.opacity(0.9), lineWidth: 2).frame(width: 44, height: 44)
+                    Circle().stroke(Theme.Palette.ink.opacity(0.85), lineWidth: 2).frame(width: 44, height: 44)
                 }
                 if popped {
                     Circle().stroke(shieldDeep, lineWidth: 2).frame(width: 46, height: 46).opacity(0.7)
@@ -242,32 +260,43 @@ struct StreakCalendarSheet: View {
     }
 
     @ViewBuilder
-    private func fill(isLogged: Bool, isShielded: Bool, isFuture: Bool, eligible: Bool, phase: Double) -> some View {
+    private func fill(isLogged: Bool, isShielded: Bool, isFuture: Bool, eligible: Bool) -> some View {
         if isLogged {
-            FireCircle(colors: fire, glow: fireAccent, phase: phase)
+            // Static fire-gradient coin: a warm gradient with a fixed inner
+            // highlight and a thin rim. No looping animation, no blend mode.
+            Circle()
+                .fill(LinearGradient(colors: fire, startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(
+                    Circle()
+                        .fill(RadialGradient(colors: [Color.white.opacity(0.45), .clear],
+                                             center: .init(x: 0.35, y: 0.30),
+                                             startRadius: 0, endRadius: 18))
+                )
+                .overlay(Circle().stroke(Color.white.opacity(0.28), lineWidth: 1))
+                .shadow(color: fireAccent.opacity(0.30), radius: 3, y: 1)
         } else if isShielded {
             Circle()
                 .fill(LinearGradient(colors: shield, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .shadow(color: shieldDeep.opacity(0.6), radius: 6)
+                .shadow(color: shieldDeep.opacity(0.30), radius: 3, y: 1)
         } else if eligible {
             Circle()
-                .fill(Color.white.opacity(0.06))
-                .overlay(Circle().strokeBorder(fireAccent.opacity(0.8),
+                .fill(Theme.Palette.streakPastel)
+                .overlay(Circle().strokeBorder(fireAccent.opacity(0.85),
                                                style: StrokeStyle(lineWidth: 1.6, dash: [3, 3])))
         } else if isFuture {
-            Circle().fill(Color.white.opacity(0.03))
+            Circle().fill(Theme.Palette.lineSoft.opacity(0.5))
         } else {
             Circle()
-                .fill(Color.white.opacity(0.05))
-                .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                .fill(Theme.Palette.bgCream)
+                .overlay(Circle().stroke(Theme.Palette.line, lineWidth: 1))
         }
     }
 
     private func numberColor(isLogged: Bool, isShielded: Bool, isFuture: Bool, eligible: Bool) -> Color {
         if isLogged || isShielded { return .white }
-        if eligible { return .white.opacity(0.92) }
-        if isFuture { return .white.opacity(0.28) }
-        return .white.opacity(0.55)
+        if eligible { return Theme.Palette.ink }
+        if isFuture { return Theme.Palette.inkFaint }
+        return Theme.Palette.inkMute
     }
 
     private func tap(date: Date) {
@@ -311,12 +340,12 @@ struct StreakCalendarSheet: View {
         VStack(spacing: 8) {
             HStack(spacing: 18) {
                 legendItem(color: fireAccent, icon: "flame.fill", text: "Logged")
-                legendItem(color: Color(hex: 0x5AB0FF), icon: "shield.fill", text: "Shielded")
-                legendItem(color: .white.opacity(0.4), icon: "circle.dashed", text: "Open")
+                legendItem(color: Color(hex: 0x2F86E8), icon: "shield.fill", text: "Shielded")
+                legendItem(color: Theme.Palette.inkMute, icon: "circle.dashed", text: "Open")
             }
             Text("Tap an open day to spend a shield.")
                 .font(AppFont.text(12, weight: .medium))
-                .foregroundColor(.white.opacity(0.55))
+                .foregroundColor(Theme.Palette.inkSoft)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 2)
@@ -325,7 +354,7 @@ struct StreakCalendarSheet: View {
     private func legendItem(color: Color, icon: String, text: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 11, weight: .bold)).foregroundColor(color)
-            Text(text).font(AppFont.text(11, weight: .semibold)).foregroundColor(.white.opacity(0.7))
+            Text(text).font(AppFont.text(11, weight: .semibold)).foregroundColor(Theme.Palette.inkSoft)
         }
     }
 
@@ -338,12 +367,11 @@ struct StreakCalendarSheet: View {
         .foregroundColor(.white)
         .padding(.horizontal, 16)
         .padding(.vertical, 11)
-        .background(Capsule().fill(toastOK ? shieldDeep : Color(hex: 0x2A2A30)))
-        .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
-        .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
-        .padding(.top, 70)
+        .background(Capsule().fill(toastOK ? shieldDeep : Theme.Palette.ink))
+        .shadow(color: .black.opacity(0.18), radius: 12, y: 6)
+        .padding(.bottom, 34)
         .opacity(showToast ? 1 : 0)
-        .offset(y: showToast ? 0 : -18)
+        .offset(y: showToast ? 0 : 18)
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showToast)
         .allowsHitTesting(false)
     }
@@ -366,6 +394,44 @@ struct StreakCalendarSheet: View {
         let from = cal.dateInterval(of: .month, for: earliest)?.start ?? earliest
         let to = cal.dateInterval(of: .month, for: Date())?.start ?? Date()
         return -(cal.dateComponents([.month], from: from, to: to).month ?? 0)
+    }
+
+    // MARK: - Shield eligibility (precomputed per render)
+
+    /// Cheap, O(1)-per-cell view of the data the calendar needs. Built once in
+    /// `calendarCard` and handed to every cell, instead of each cell re-deriving
+    /// the logged/shielded sets and week tallies from the raw arrays.
+    struct MonthContext {
+        let logged: Set<String>
+        let shielded: Set<String>
+        let loggedWeeks: Set<String>
+        let shieldsByWeek: [String: Int]
+
+        /// Mirror of `AppContainer.canShield`, using the precomputed tallies.
+        /// The cell already knows the day isn't logged/shielded/future.
+        func canShield(_ day: Date, weekKey: String) -> Bool {
+            guard loggedWeeks.contains(weekKey) else { return false }
+            return (shieldsByWeek[weekKey] ?? 0) < AppContainer.shieldsPerWeek
+        }
+    }
+
+    private var monthContext: MonthContext {
+        let logged = container.loggedDayKeys
+        let shielded = container.shieldedDayKeys
+        let loggedWeeks = Set(container.transactions.map { weekKey($0.date) })
+        var shieldsByWeek: [String: Int] = [:]
+        for k in shielded {
+            if let d = Self.keyFormatter.date(from: k) {
+                shieldsByWeek[weekKey(d), default: 0] += 1
+            }
+        }
+        return MonthContext(logged: logged, shielded: shielded,
+                            loggedWeeks: loggedWeeks, shieldsByWeek: shieldsByWeek)
+    }
+
+    private func weekKey(_ date: Date) -> String {
+        let c = Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return "\(c.yearForWeekOfYear ?? 0)-\(c.weekOfYear ?? 0)"
     }
 
     // MARK: - Calendar math
@@ -403,60 +469,5 @@ struct StreakCalendarSheet: View {
         }
         while cells.count % 7 != 0 { cells.append(nil) }
         return cells
-    }
-}
-
-// MARK: - Background + fire circles
-
-/// Static dark fiery gradient. Deep base plus two fixed fiery glows — no
-/// motion, so the only animation on screen is the fire day-circles.
-private struct DarkFireBackground: View {
-    let accent: Color
-    let warm: Color
-
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: 0x1A0B06), Color(hex: 0x06040A)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [accent.opacity(0.40), .clear],
-                           center: .bottom, startRadius: 10, endRadius: 460)
-                .blendMode(.screen)
-            RadialGradient(colors: [warm.opacity(0.28), .clear],
-                           center: .topTrailing, startRadius: 8, endRadius: 360)
-                .blendMode(.screen)
-        }
-    }
-}
-
-/// A logged day: a fire-gradient circle with a flickering inner ember glow,
-/// staggered per day so the calendar shimmers. Only the small inner highlight
-/// animates (scale + opacity) — the outer glow is a fixed shadow. Animating a
-/// shadow's radius (the old approach) re-blurs every frame across every logged
-/// day, which is what made the page heavy.
-private struct FireCircle: View {
-    let colors: [Color]
-    let glow: Color
-    var phase: Double = 0
-
-    @State private var flick = false
-
-    var body: some View {
-        Circle()
-            .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(
-                Circle()
-                    .fill(RadialGradient(colors: [Color.white.opacity(0.6), .clear],
-                                         center: .init(x: 0.35, y: 0.30), startRadius: 0, endRadius: 20))
-                    .scaleEffect(flick ? 1.0 : 0.6)
-                    .opacity(flick ? 0.95 : 0.4)
-                    .blendMode(.screen)
-            )
-            .overlay(Circle().stroke(Color.white.opacity(0.22), lineWidth: 1))
-            .shadow(color: glow.opacity(0.55), radius: 5)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true).delay(phase)) {
-                    flick = true
-                }
-            }
     }
 }

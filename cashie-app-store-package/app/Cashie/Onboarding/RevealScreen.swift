@@ -119,59 +119,11 @@ struct RevealScreen: View {
             .multilineTextAlignment(.center)
     }
 
-    /// The results table. Revealed all together with the `statsCard` beat (the
-    /// parent gates its opacity/scale), and each row is a quiz-style card
-    /// (rounded continuous corners, cream fill, hairline border) so it matches
-    /// the quiz options.
+    /// The results table, revealed all together with the `statsCard` beat (the
+    /// parent gates its opacity/scale). Uses the shared `ArchetypeQuickStats`
+    /// soft-card tiles so the reveal matches the new main-screen UI.
     private var insights: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Quick stats")
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundColor(Theme.Palette.inkSoft)
-                .padding(.bottom, 2)
-
-            statCard(label: "Confidence in match",
-                     value: "\(state.selectedArchetype.matchPercent)%")
-            statCard(label: "Estimated $/year leak",
-                     value: Money.format(state.selectedArchetype.painYearly))
-            statCard(label: "Others like you we've seen",
-                     value: state.selectedArchetype.populationLabel,
-                     avatars: true)
-        }
-    }
-
-    private func statCard(label: String, value: String, avatars: Bool = false) -> some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .font(AppFont.text(16, weight: .medium))
-                .foregroundColor(Theme.Palette.ink)
-            Spacer(minLength: 8)
-            if avatars {
-                HStack(spacing: 8) {
-                    AvatarStack(size: 26, overlap: 9)
-                    Text(value)
-                        .font(AppFont.text(16, weight: .semibold))
-                        .foregroundColor(Theme.Palette.ink)
-                }
-            } else {
-                Text(value)
-                    .font(AppFont.text(16, weight: .semibold))
-                    .foregroundColor(Theme.Palette.ink)
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Theme.Palette.bgCream)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.Palette.line, lineWidth: 1)
-        )
+        ArchetypeQuickStats(archetype: state.selectedArchetype)
     }
 
     // MARK: Driver

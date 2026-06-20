@@ -8,9 +8,14 @@ struct ArchetypeSheet: View {
     let traits: [Trait]
     @Environment(\.dismiss) var dismiss
 
+    /// Gentle breathing float for the archetype coin, plus a one-shot fill for
+    /// the trait bars, so the sheet feels alive on open.
+    @State private var coinFloat: CGFloat = 0
+    @State private var barsFilled = false
+
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -22,7 +27,7 @@ struct ArchetypeSheet: View {
                         .padding(.top, 18)
 
                     EmphasizedHeadline(
-                        raw: "Meet\n<em>\(archetype.name).</em>",
+                        raw: "Meet\n<em>\(archetype.name)</em>",
                         font: AppFont.display(38, weight: .bold)
                     )
                     .multilineTextAlignment(.center)
@@ -30,6 +35,15 @@ struct ArchetypeSheet: View {
 
                     ArchetypeBadge(emoji: archetype.emoji, size: 130)
                         .padding(.vertical, 5)
+                        .offset(y: coinFloat)
+                        .onAppear {
+                            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                                coinFloat = -7
+                            }
+                            withAnimation(.spring(response: 0.8, dampingFraction: 0.85).delay(0.15)) {
+                                barsFilled = true
+                            }
+                        }
 
                     Text(archetype.tagline)
                         .font(AppFont.text(14, weight: .regular, italic: true))
@@ -60,25 +74,7 @@ struct ArchetypeSheet: View {
     }
 
     private var insights: some View {
-        VStack(spacing: 0) {
-            Text("Quick stats")
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundColor(Theme.Palette.inkSoft)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 10)
-
-            stat("Confidence in match", "\(archetype.matchPercent)%")
-            divider
-            stat("Estimated $/year leak", Money.format(archetype.painYearly))
-            divider
-            statWithAvatars("Others like you we've seen", archetype.populationLabel)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        ArchetypeQuickStats(archetype: archetype)
     }
 
     private var traitsCard: some View {
@@ -107,7 +103,7 @@ struct ArchetypeSheet: View {
                             Capsule().fill(Theme.Palette.lineSoft)
                             Capsule()
                                 .fill(Theme.Palette.gold)
-                                .frame(width: proxy.size.width * (CGFloat(trait.score) / 100))
+                                .frame(width: proxy.size.width * (barsFilled ? CGFloat(trait.score) / 100 : 0))
                         }
                     }
                     .frame(height: 4)
@@ -115,36 +111,6 @@ struct ArchetypeSheet: View {
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
-    }
-
-    private var divider: some View {
-        Rectangle().fill(Theme.Palette.lineSoft).frame(height: 1)
-    }
-
-    private func stat(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(AppFont.callout).foregroundColor(Theme.Palette.ink)
-            Spacer()
-            Text(value)
-                .font(AppFont.text(16, weight: .semibold))
-                .foregroundColor(Theme.Palette.ink)
-        }
-        .padding(.vertical, 10)
-    }
-
-    private func statWithAvatars(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(AppFont.callout).foregroundColor(Theme.Palette.ink)
-            Spacer()
-            HStack(spacing: 8) {
-                AvatarStack(size: 26, overlap: 9)
-                Text(value)
-                    .font(AppFont.text(16, weight: .semibold))
-                    .foregroundColor(Theme.Palette.ink)
-            }
-        }
-        .padding(.vertical, 10)
+        .softCard()
     }
 }

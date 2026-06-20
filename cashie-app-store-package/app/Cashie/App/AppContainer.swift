@@ -307,6 +307,16 @@ final class AppContainer: ObservableObject {
         evaluateAchievements()
     }
 
+    /// Edit an already-logged transaction in place (used when the user
+    /// re-categorises a log). Updates the local snapshot immediately, then
+    /// upserts the change to the backend by id.
+    func updateTransaction(_ tx: Transaction) {
+        guard let idx = transactions.firstIndex(where: { $0.id == tx.id }) else { return }
+        transactions[idx] = tx
+        Task { try? await supabase.updateTransaction(tx) }
+        track("transaction_updated", ["category": tx.category.rawValue])
+    }
+
     func addDeposit(_ deposit: Deposit, to goalID: UUID) {
         guard let idx = goals.firstIndex(where: { $0.id == goalID }) else { return }
         let wasAchieved = goals[idx].isAchieved
@@ -829,7 +839,6 @@ enum OnboardingStep: Equatable, Hashable {
     case reveal
     case traits
     case pain
-    case solution
     case effort
     case socialProof
     case reviews
@@ -844,7 +853,6 @@ enum OnboardingStep: Equatable, Hashable {
     case actionButtonSetup
     case applePaySetup
     case currency
-    case tryLive
     case ready
 }
 
@@ -861,7 +869,6 @@ extension OnboardingStep {
         case .reveal: return "reveal"
         case .traits: return "traits"
         case .pain: return "pain"
-        case .solution: return "solution"
         case .effort: return "effort"
         case .socialProof: return "socialProof"
         case .reviews: return "reviews"
@@ -876,7 +883,6 @@ extension OnboardingStep {
         case .actionButtonSetup: return "actionButtonSetup"
         case .applePaySetup: return "applePaySetup"
         case .currency: return "currency"
-        case .tryLive: return "tryLive"
         case .ready: return "ready"
         }
     }
@@ -894,7 +900,6 @@ extension OnboardingStep {
         case "reveal": self = .reveal
         case "traits": self = .traits
         case "pain": self = .pain
-        case "solution": self = .solution
         case "effort": self = .effort
         case "socialProof": self = .socialProof
         case "reviews": self = .reviews
@@ -909,7 +914,6 @@ extension OnboardingStep {
         case "actionButtonSetup": self = .actionButtonSetup
         case "applePaySetup": self = .applePaySetup
         case "currency": self = .currency
-        case "tryLive": self = .tryLive
         case "ready": self = .ready
         default: return nil
         }
@@ -927,7 +931,6 @@ extension OnboardingStep {
         case .reveal: return 9
         case .traits: return 10
         case .pain: return 11
-        case .solution: return 12
         case .effort: return 13
         case .socialProof: return 14
         case .reviews: return 15
@@ -942,8 +945,7 @@ extension OnboardingStep {
         case .actionButtonSetup: return 24
         case .applePaySetup: return 25
         case .currency: return 26
-        case .tryLive: return 27
-        case .ready: return 28
+        case .ready: return 27
         }
     }
 

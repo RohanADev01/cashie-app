@@ -19,7 +19,7 @@ final class StoreKitService: SubscriptionService {
 
     private let productIDs: [String] = [
         "cashie_pro_monthly",
-        "cashie_pro_yearly"
+        "cashie_pro_yearly_v2"
     ]
 
     private var loadedProducts: [String: Product] = [:]
@@ -54,7 +54,7 @@ final class StoreKitService: SubscriptionService {
     func loadOfferings() async throws -> [Offering] {
         try await ensureProductsLoaded()
         let monthly = loadedProducts["cashie_pro_monthly"]
-        let yearly = loadedProducts["cashie_pro_yearly"]
+        let yearly = loadedProducts["cashie_pro_yearly_v2"]
         var out: [Offering] = []
         if let yearly { out.append(offering(from: yearly)) }
         if let monthly { out.append(offering(from: monthly)) }
@@ -130,7 +130,7 @@ final class StoreKitService: SubscriptionService {
 
     private static func refreshFromCurrentEntitlementsStatic(productIDs: [String]? = nil) async {
         let ids = productIDs ?? [
-            "cashie_pro_monthly", "cashie_pro_yearly"
+            "cashie_pro_monthly", "cashie_pro_yearly_v2"
         ]
         var active = false
         for await result in SKTransaction.currentEntitlements {

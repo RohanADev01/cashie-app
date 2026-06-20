@@ -164,7 +164,7 @@ exist in App Store Connect.
 The two product IDs the app expects:
 
 - `cashie_pro_monthly` — $9.99 / month
-- `cashie_pro_yearly` — $23.88 / year (the single yearly plan; shown as "SAVE 80% vs monthly")
+- `cashie_pro_yearly_v2` — $29.99 / year (the single yearly plan; shown as "SAVE 75% vs monthly")
 
 ### Code changes
 

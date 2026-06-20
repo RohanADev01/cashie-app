@@ -14,29 +14,32 @@ struct BudgetsSheet: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                header
-                summary
-                VStack(spacing: 12) {
-                    ForEach(editableCategories) { cat in
-                        BudgetRow(
-                            category: cat,
-                            spent: container.monthSpend(in: cat),
-                            cap: capBinding(for: cat),
-                            isExpanded: expandedCategory == cat,
-                            onToggle: {
-                                withAnimation(Theme.Motion.snap) {
-                                    expandedCategory = (expandedCategory == cat) ? nil : cat
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+                    summary
+                    VStack(spacing: 12) {
+                        ForEach(editableCategories) { cat in
+                            BudgetRow(
+                                category: cat,
+                                spent: container.monthSpend(in: cat),
+                                cap: capBinding(for: cat),
+                                isExpanded: expandedCategory == cat,
+                                onToggle: {
+                                    withAnimation(Theme.Motion.snap) {
+                                        expandedCategory = (expandedCategory == cat) ? nil : cat
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
-            .padding(.bottom, 30)
         }
     }
 
@@ -88,21 +91,9 @@ struct BudgetsSheet: View {
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white, Theme.Palette.gold.opacity(0.07)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.Palette.gold.opacity(0.22), lineWidth: 1)
-        )
-        .shadow(color: Theme.Palette.gold.opacity(0.08), radius: 6, x: 0, y: 2)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 
     /// Spreads the monthly cap evenly across the days in the current month
@@ -172,19 +163,7 @@ private struct BudgetRow: View {
             }
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: [Color.white, Theme.Palette.gold.opacity(0.04)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.Palette.gold.opacity(isExpanded ? 0.3 : 0.16), lineWidth: 1)
-        )
+        .softCard()
     }
 }
 

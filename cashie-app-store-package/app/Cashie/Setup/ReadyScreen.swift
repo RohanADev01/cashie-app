@@ -18,7 +18,7 @@ struct ReadyScreen: View {
 
     private var baseBody: some View {
         ZStack {
-            Theme.Palette.bg.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             ConfettiBackground()
 
             VStack(spacing: 14) {
@@ -43,7 +43,6 @@ struct ReadyScreen: View {
                     item("Money type: \(state.selectedArchetype.name)")
                     item("Permissions configured")
                     item("Quick Log: live on your device")
-                    item("First log: \(Money.symbol)18 food saved")
                 }
                 .padding(.top, 18)
 

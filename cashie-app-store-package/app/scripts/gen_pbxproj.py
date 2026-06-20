@@ -426,17 +426,22 @@ def render_pbxproj() -> str:
         "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor",
         "CODE_SIGN_STYLE = Automatic",
-        "CURRENT_PROJECT_VERSION = 2",
+        "CURRENT_PROJECT_VERSION = 4",
         "DEVELOPMENT_ASSET_PATHS = \"\"",
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = NO",
         f"INFOPLIST_FILE = {APP_NAME}/Info.plist",
+        # App Store primary category (Finance). Surfaces in Xcode's General tab and
+        # the built binary's LSApplicationCategoryType (also set in Info.plist).
+        # The secondary category (Lifestyle) lives only in App Store Connect; the
+        # binary supports a single category slot.
+        "INFOPLIST_KEY_LSApplicationCategoryType = \"public.app-category.finance\"",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation = YES",
         "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = \"UIInterfaceOrientationPortrait\"",
         "LD_RUNPATH_SEARCH_PATHS = (\"$(inherited)\", \"@executable_path/Frameworks\")",
-        "MARKETING_VERSION = 1.0",
+        "MARKETING_VERSION = 1.2",
         f"PRODUCT_BUNDLE_IDENTIFIER = {BUNDLE_ID}",
         f"PRODUCT_NAME = \"$(TARGET_NAME)\"",
         "SWIFT_EMIT_LOC_STRINGS = YES",

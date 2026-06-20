@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The "2-second log" intro: one punchy teaser that sells how fast logging is,
-/// shown right before the "Three ways to log" chooser. A black phone with gold
+/// shown right before the "Two ways to log" chooser. A black phone with gold
 /// rings radiating out of it. Continue leads into the chooser (`backTapTeaser`).
 struct BackTapIntroScreen: View {
     @EnvironmentObject var container: AppContainer

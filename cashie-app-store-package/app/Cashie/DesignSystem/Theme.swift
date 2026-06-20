@@ -7,6 +7,14 @@ enum Theme {
         static let bgCream = Color(hex: 0xF4F5F7)
         static let phoneBg = Color(hex: 0xEAECEE)
 
+        /// Light, airy page backdrop. Every main screen sits on the
+        /// `Theme.pageBackground` gradient (top -> bottom); kept very close to
+        /// white with only the faintest warm settle at the bottom so the
+        /// floating `softCard` surfaces lift on their shadow without the page
+        /// ever reading as grey/dull.
+        static let pageTop = Color(hex: 0xFFFFFF)
+        static let pageBottom = Color(hex: 0xFBFAF8)
+
         static let ink = Color(hex: 0x111111)
         static let inkSoft = Color(hex: 0x111111).opacity(0.68)
         static let inkMute = Color(hex: 0x111111).opacity(0.48)
@@ -61,6 +69,11 @@ enum Theme {
         static let red = Color(hex: 0xE83F3F)
         static let redSoft = Color(hex: 0xE83F3F).opacity(0.06)
 
+        /// Streak / energy orange (the flame accent). A warm orange that pairs
+        /// with the brand mint and the honey win-gold without clashing.
+        static let streak = Color(hex: 0xFF7A3C)
+        static let streakPastel = Color(hex: 0xFFF1E8)
+
         static let cardShadow = Color.black.opacity(0.08)
     }
 
@@ -91,20 +104,69 @@ enum Theme {
     }
 }
 
-/// Frosted-glass background for emoji tiles (Where-it-Went rows, GoalTile).
-/// Uses ultraThinMaterial plus a faint white wash and hairline highlight so
-/// the underlying card shows through and the emoji reads as the focal point.
+/// Flat "paper" background for emoji tiles (Where-it-Went rows, GoalTile,
+/// transaction rows). A solid cream swatch with a hairline border, no blur or
+/// gloss, so tiles read as clean flat paper and stay consistent on every light
+/// surface across the app. (Name kept for the many existing call sites.)
 struct GlassTile: View {
     var cornerRadius: CGFloat = 12
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        ZStack {
-            shape.fill(.ultraThinMaterial)
-            shape.fill(Color.white.opacity(0.22))
-            shape.stroke(Color.white.opacity(0.55), lineWidth: 0.6)
-            shape.strokeBorder(Color.black.opacity(0.05), lineWidth: 0.5)
+        shape
+            .fill(Theme.Palette.bgCream)
+            .overlay(shape.stroke(Theme.Palette.line.opacity(0.7), lineWidth: 1))
+    }
+}
+
+extension Theme {
+    /// The app's standard page backdrop: a soft warm near-white vertical
+    /// gradient. Every main screen sits on this so the floating `softCard`
+    /// surfaces read as paper lifting off the page.
+    static var pageBackground: LinearGradient {
+        LinearGradient(
+            colors: [Palette.pageTop, Palette.pageBottom],
+            startPoint: .top, endPoint: .bottom
+        )
+    }
+}
+
+extension View {
+    /// The app's standard card: a white floating surface with a soft layered
+    /// shadow and no hairline border. Apply to content that already carries its
+    /// own internal padding. This is the single card treatment shared by every
+    /// screen so the whole app reads as one family.
+    func softCard(_ cornerRadius: CGFloat = 18) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white)
+            )
+            .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 9)
+            .shadow(color: Color.black.opacity(0.025), radius: 2, x: 0, y: 1)
+    }
+}
+
+/// Small brand-green action chip used for the secondary "jump" links on cards
+/// (Set budgets, This month, …). A soft mint capsule with green label and a
+/// trailing arrow, so the affordance reads as a real button that belongs to the
+/// theme rather than a bare run of uppercase text. Purely visual: the parent
+/// row/card owns the tap.
+struct PillLink: View {
+    let title: String
+    var icon: String = "arrow.right"
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(AppFont.text(11, weight: .semibold))
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .bold))
         }
+        .foregroundColor(Theme.Palette.gold)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 6)
+        .background(Capsule().fill(Theme.Palette.goldPastel))
     }
 }
 

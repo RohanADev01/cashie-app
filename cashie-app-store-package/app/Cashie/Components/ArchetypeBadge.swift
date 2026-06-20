@@ -82,3 +82,74 @@ struct ArchetypeBadge: View {
         .frame(width: haloSize, height: haloSize)
     }
 }
+
+/// The "Quick stats" block shown on the archetype reveal (onboarding) and the
+/// archetype sheet (You tab). Built from the same white soft-card stat tiles the
+/// main screens use, so both archetype pages read as part of the new UI family
+/// instead of a separate list style.
+struct ArchetypeQuickStats: View {
+    let archetype: Archetype
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Quick stats")
+                .font(AppFont.text(11, weight: .semibold))
+                .tracking(1)
+                .textCase(.uppercase)
+                .foregroundColor(Theme.Palette.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                tile(value: "\(archetype.matchPercent)%", label: "Match confidence")
+                tile(value: Money.format(archetype.painYearly), label: "Est. yearly leak")
+            }
+
+            peopleTile
+        }
+    }
+
+    private func tile(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(value)
+                .font(AppFont.text(22, weight: .bold))
+                .foregroundColor(Theme.Palette.ink)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(AppFont.text(11, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundColor(Theme.Palette.inkSoft)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .softCard()
+    }
+
+    /// Social-proof tile spans the full width so the avatar stack has room.
+    private var peopleTile: some View {
+        HStack(spacing: 14) {
+            AvatarStack(size: 30, overlap: 10)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(archetype.populationLabel)
+                    .font(AppFont.text(22, weight: .bold))
+                    .foregroundColor(Theme.Palette.ink)
+                    .monospacedDigit()
+                Text("Others like you we've seen")
+                    .font(AppFont.text(11, weight: .semibold))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+                    .foregroundColor(Theme.Palette.inkSoft)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .softCard()
+    }
+}

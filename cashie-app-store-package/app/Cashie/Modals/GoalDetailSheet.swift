@@ -12,7 +12,6 @@ struct GoalDetailSheet: View {
     @State private var addingDeposit = false
     @State private var depositAmount: String = "20"
     @State private var editing = false
-    @State private var showBudgets = false
     @State private var pendingRemoval: Deposit?
 
     /// Always read the latest copy from the container so deposits added in
@@ -22,40 +21,37 @@ struct GoalDetailSheet: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    Spacer()
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Theme.Palette.ink)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(Theme.Palette.bgCream))
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack {
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Theme.Palette.ink)
+                                .frame(width: 32, height: 32)
+                                .background(Circle().fill(Theme.Palette.bgCream))
+                        }
                     }
-                }
-                .padding(.top, 18)
+                    .padding(.top, 18)
 
-                hero
-                if addingDeposit {
-                    depositForm
-                } else {
-                    actions
+                    hero
+                    if addingDeposit {
+                        depositForm
+                    } else {
+                        actions
+                    }
+                    deposits
+                    archiveAction
                 }
-                weekBudgetCard
-                deposits
-                archiveAction
+                .padding(.horizontal, 22)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 22)
-            .padding(.bottom, 30)
         }
         .sheet(isPresented: $editing) {
             EditGoalSheet(goal: liveGoal)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-        }
-        .sheet(isPresented: $showBudgets) {
-            BudgetsSheet()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -74,23 +70,37 @@ struct GoalDetailSheet: View {
             }
             Button("Cancel", role: .cancel) { pendingRemoval = nil }
         } message: { dep in
-            Text("This frees up \(Money.format(dep.amount)) in your weekly budget.")
+            Text("This takes \(Money.format(dep.amount)) back out of this goal.")
         }
     }
 
     private var hero: some View {
-        HStack(spacing: 16) {
-            Text(liveGoal.emoji).font(.system(size: 56))
+        HStack(alignment: .center, spacing: 14) {
+            // Emoji in a GlassTile, matching how goals read on the Goals tab and
+            // the home "Where it went" rows.
+            ZStack {
+                GlassTile(cornerRadius: 14)
+                Text(liveGoal.emoji).font(.system(size: 28))
+            }
+            .frame(width: 56, height: 56)
+
             VStack(alignment: .leading, spacing: 4) {
-                Text(liveGoal.name).font(AppFont.title1)
+                Text(liveGoal.name)
+                    .font(AppFont.title2)
+                    .foregroundColor(Theme.Palette.ink)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
                 Text("\(Money.format(liveGoal.currentAmount)) of \(Money.format(liveGoal.targetAmount))")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
-                ProgressRing(progress: liveGoal.progress)
-                    .frame(width: 80, height: 80)
-                    .padding(.top, 8)
             }
-            Spacer()
+
+            Spacer(minLength: 12)
+
+            // Progress ring sits on the right, balancing the emoji + text rather
+            // than stacking under them with the right half left empty.
+            ProgressRing(progress: liveGoal.progress)
+                .frame(width: 64, height: 64)
         }
     }
 
@@ -170,17 +180,14 @@ struct GoalDetailSheet: View {
         }
     }
 
-    /// Inline form for adding a deposit. Replaces the old alert so the
-    /// user can see the weekly budget impact while typing the amount.
+    /// Inline form for adding a deposit. Just the amount and a gentle note if
+    /// you're putting in more than the goal still needs — no weekly-budget math,
+    /// since a goal only ever cares about its own target.
     private var depositForm: some View {
-        let info = weekInfo
         let typed = Money.parseAmount(depositAmount) ?? 0
         let headroom = max(0, liveGoal.targetAmount - liveGoal.currentAmount)
         let actual = min(typed, headroom)
         let willCap = typed > headroom && headroom > 0
-        let projectedSpent = info.spent + actual
-        let projectedLeft = info.cap - projectedSpent
-        let projectedOver = info.cap > 0 && projectedSpent > info.cap
 
         return VStack(alignment: .leading, spacing: 12) {
             Text("Adding to \(liveGoal.name)")
@@ -210,20 +217,6 @@ struct GoalDetailSheet: View {
                     Text("Only \(Money.format(headroom)) needed to fund this goal. Logging \(Money.format(actual)).")
                         .font(AppFont.text(12))
                         .foregroundColor(Theme.Palette.inkSoft)
-                }
-            }
-
-            if info.cap > 0 {
-                HStack {
-                    Text("After this deposit, this week")
-                        .font(AppFont.text(12))
-                        .foregroundColor(Theme.Palette.inkSoft)
-                    Spacer()
-                    Text(projectedOver
-                         ? "~\(Money.format(projectedSpent - info.cap)) over budget"
-                         : "~\(Money.format(max(0, projectedLeft))) left")
-                        .font(AppFont.text(12, weight: .semibold))
-                        .foregroundColor(projectedOver ? Theme.Palette.red : Theme.Palette.gold)
                 }
             }
 
@@ -261,73 +254,8 @@ struct GoalDetailSheet: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.Palette.line, lineWidth: 1))
-    }
-
-    /// Always-visible "this week" budget summary so users see how much
-    /// headroom they have before they tap Add money. Tapping it opens
-    /// Manage Budgets, since the weekly headroom is derived from the caps.
-    private var weekBudgetCard: some View {
-        let info = weekInfo
-        let pct = info.cap > 0 ? min(1, info.spent / info.cap) : 0
-        let overCap = info.cap > 0 && info.spent > info.cap
-        let remaining = max(0, info.cap - info.spent)
-
-        return Button { showBudgets = true } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("This week's budget")
-                        .font(AppFont.text(11, weight: .semibold))
-                        .tracking(0.6)
-                        .textCase(.uppercase)
-                        .foregroundColor(Theme.Palette.inkSoft)
-                    Spacer()
-                    Text("Set budgets →")
-                        .font(AppFont.text(11, weight: .medium))
-                        .tracking(0.5)
-                        .textCase(.uppercase)
-                        .foregroundColor(Theme.Palette.gold)
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(Money.format(info.spent, cents: info.spent < 100))
-                        .font(AppFont.display(24, weight: .heavy))
-                        .foregroundColor(Theme.Palette.ink)
-                        .monospacedDigit()
-                    if info.cap > 0 {
-                        Text("of \(Money.format(info.cap, cents: info.cap < 100))")
-                            .font(AppFont.text(12))
-                            .foregroundColor(Theme.Palette.inkSoft)
-                    }
-                    Spacer()
-                }
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.Palette.ink.opacity(0.06))
-                        Capsule()
-                            .fill(overCap ? Theme.Palette.red : Theme.Palette.gold)
-                            .frame(width: proxy.size.width * CGFloat(pct))
-                    }
-                }
-                .frame(height: 4)
-                HStack {
-                    Text(info.cap <= 0
-                         ? "Set caps in budgets to track weekly headroom"
-                         : (overCap
-                            ? "~\(Money.format(info.spent - info.cap)) over weekly cap"
-                            : "~\(Money.format(remaining)) left to spend or save this week"))
-                        .font(AppFont.text(11, weight: .medium))
-                        .foregroundColor(overCap ? Theme.Palette.red : Theme.Palette.inkSoft)
-                    Spacer()
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.Palette.line, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plainTappable)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 
     private var deposits: some View {
@@ -369,34 +297,9 @@ struct GoalDetailSheet: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
-    }
-
-    private struct WeekInfo {
-        let spent: Double
-        let cap: Double
-    }
-
-    /// Mirrors the home tab's weekly tracker: rolling 7-day window where
-    /// outflows include both expenses and goal deposits, weighed against
-    /// a prorated weekly cap derived from the user's monthly category caps.
-    private var weekInfo: WeekInfo {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let weekStart = cal.date(byAdding: .day, value: -6, to: today) ?? today
-        let txs = container.transactions.filter {
-            $0.category != .income && $0.date >= weekStart
-        }
-        let weekDeposits = container.goals.flatMap(\.deposits)
-            .filter { $0.date >= weekStart }
-        let spent = txs.reduce(0) { $0 + $1.amount }
-            + weekDeposits.reduce(0) { $0 + $1.amount }
-        let monthCap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
-        let daysInMonth = cal.range(of: .day, in: .month, for: Date())?.count ?? 30
-        let weeklyCap = monthCap * 7.0 / Double(daysInMonth)
-        return WeekInfo(spent: spent, cap: weeklyCap)
+        .softCard()
     }
 
     private func formatted(_ date: Date) -> String {

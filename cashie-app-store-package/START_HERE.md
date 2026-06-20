@@ -118,7 +118,7 @@ feature. The Supabase edge functions are in `backend/functions/`
 
 1. Open `app-store-connect/APP_STORE_CONNECT_FIELDS.md` - it has paste-ready content
    for every field (name, subtitle, description, keywords, promo text, the
-   subscription group + four products, App Privacy answers, review notes). Section
+   subscription group + both products, App Privacy answers, review notes). Section
    0 lists the only values you must supply yourself.
 2. Upload marketing screenshots from `app-store-connect/screenshots/iphone_6.9_inch/`
    (or `iphone_6.5_inch/` if App Store Connect asks for the 6.5" size). The app is
@@ -142,11 +142,10 @@ feature. The Supabase edge functions are in `backend/functions/`
 
 - [ ] `Config.swift` secrets pasted in (`supabaseAnonKey`, plus `appStoreID`,
       `postHogAPIKey`, and the two Shortcut links if shipping Quick Log). No purchase key needed.
-- [ ] All **four** products created in App Store Connect, in one "Cashie Pro"
+- [ ] Both products created in App Store Connect, in one "Cashie Pro"
       subscription group, **no free trial**, IDs matching `StoreKitService.productIDs`:
-      `cashie_pro_monthly` $9.99, `cashie_pro_yearly` $79.99,
-      `cashie_pro_yearly_mid` $35.88, `cashie_pro_yearly_special` $23.88
-      (the last two are the exit-intent rescue offers) - **see `docs/GO_LIVE_RUNBOOK.md` §2.**
+      `cashie_pro_monthly` $9.99, `cashie_pro_yearly_v2` $29.99
+      (one screen, one offer - no rescue products) - **see `docs/GO_LIVE_RUNBOOK.md` §2.**
 - [ ] **Supabase: enable Anonymous sign-ins** on project `fsmdklrrcnnwyzenuaed`
       (the app creates a silent anonymous account; without this, sync/auth fails).
 - [ ] (If shipping Quick Log) set the App Store Connect API key edge secrets so

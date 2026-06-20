@@ -1,21 +1,23 @@
 import SwiftUI
 
-/// Used by `ContrastScreen` to toggle a before/after pill. Kept here for source
-/// compatibility.
-enum PaywallStage: Hashable { case without, with }
-
-private let paywallViewCountKey = "paywallViewCount"
-private let paywallCelebrationShownKey = "paywallCelebrationShown"
-
-/// A single, honest paywall: one screen, one offer. A friendly "We'd like to
-/// offer you 75% off!" line introduces the two plan cards (monthly + yearly).
-/// The yearly card carries the genuine struck-through reference + "SAVE 75%".
-/// There is NO second / exit-intent / pop-up offer surface — everything lives on
-/// this one screen, which keeps it within App Store Guideline 5.6. Confetti
-/// celebrates the first visit only.
-struct PaywallScreen: View {
+/// A dismissible duplicate of the onboarding `PaywallScreen`, presented from the
+/// You tab's "Subscription · Cashie Pro" row. It's the same single, honest
+/// paywall (monthly + yearly cards, 75%-off yearly, the same purchase / restore
+/// / Terms / Privacy), so an existing subscriber can switch between monthly and
+/// yearly exactly the way they'd pick a plan in onboarding.
+///
+/// Two differences from the onboarding screen:
+///   1. a close (X) button, top-right, since this is a modal the user opened;
+///   2. completing a purchase (or a successful restore) marks the user Pro,
+///      refreshes the live entitlement and dismisses — it does NOT advance the
+///      onboarding flow (the user is already in the app).
+///
+/// Kept as a standalone copy on purpose: the onboarding paywall is launch
+/// critical, so this avoids refactoring it. The `PlanCard` component is shared.
+/// If you change pricing or copy on `PaywallScreen`, mirror it here.
+struct SubscriptionPaywallSheet: View {
     @EnvironmentObject var container: AppContainer
-    @EnvironmentObject var state: OnboardingState
+    @Environment(\.dismiss) private var dismiss
 
     @State private var offerings: [Offering] = []
     @State private var selectedID: String = "cashie_pro_yearly_v2"
@@ -24,21 +26,10 @@ struct PaywallScreen: View {
     @State private var bob: CGFloat = 0
     @State private var tilt: Double = -3
 
-    /// True only on the first visit to the paywall, so the confetti celebrates
-    /// once and the screen is calm on every later visit.
-    @State private var showCelebration = false
-
     var body: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             GoldBlob(alignment: .topTrailing, size: 360, intensity: 0.08)
-            // First-visit celebration. Non-interactive so it never blocks the
-            // plan cards / CTA.
-            if showCelebration {
-                ConfettiBackground(style: .celebration)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-            }
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 22) {
@@ -53,33 +44,34 @@ struct PaywallScreen: View {
                 .padding(.bottom, 28)
             }
         }
+        .overlay(alignment: .topTrailing) { closeButton }
         .task { await loadOfferings() }
         .onAppear {
-            UserDefaults.standard.set(true, forKey: "hasReachedPaywall")
-            #if DEBUG
-            // Dev/QA: launch with `-offer reset` to replay the first-visit confetti.
-            let devArgs = ProcessInfo.processInfo.arguments
-            if let i = devArgs.firstIndex(of: "-offer"), devArgs.indices.contains(i + 1),
-               devArgs[i + 1] == "reset" {
-                UserDefaults.standard.removeObject(forKey: paywallCelebrationShownKey)
-            }
-            #endif
-            // Confetti only the first time the user reaches the paywall.
-            if !UserDefaults.standard.bool(forKey: paywallCelebrationShownKey) {
-                showCelebration = true
-                UserDefaults.standard.set(true, forKey: paywallCelebrationShownKey)
-            }
-            trackPaywallViewed()
+            container.track("paywall_viewed",
+                            ["placement": "settings", "variant": "single_offer",
+                             "default_plan": selectedID])
         }
+    }
+
+    private var closeButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(Theme.Palette.ink)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(Theme.Palette.bgCream))
+                .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
+        }
+        .buttonStyle(.plainTappable)
+        .padding(.top, 14)
+        .padding(.trailing, 18)
     }
 
     // MARK: Loading
 
     private func loadOfferings() async {
         offerings = (try? await container.subscriptions.loadOfferings()) ?? []
-        // Always anchor on yearly (the @State default). Never auto-select
-        // monthly — it's the decoy that makes annual look smart, not the
-        // recommended plan. If yearly somehow isn't loaded we keep the default.
+        // Always anchor on yearly (the recommended plan), matching onboarding.
         if offerings.contains(where: { $0.id == "cashie_pro_yearly_v2" }) {
             selectedID = "cashie_pro_yearly_v2"
         }
@@ -170,7 +162,7 @@ struct PaywallScreen: View {
             .shadow(color: Self.starYellow.opacity(0.35), radius: 16, x: 0, y: 0)
     }
 
-    // MARK: Plans (two cards side by side — the 75% off is on the yearly card)
+    // MARK: Plans (shared PlanCard with the onboarding paywall)
 
     private var plansBlock: some View {
         HStack(spacing: 12) {
@@ -184,8 +176,6 @@ struct PaywallScreen: View {
                 isSelected: selectedID == "cashie_pro_monthly"
             ) { selectPlan("cashie_pro_monthly") }
 
-            // Yearly carries the discount inline: the struck-through $119.88 is the
-            // genuine 12 x $9.99 monthly cost, so "SAVE 75%" is truthful.
             PlanCard(
                 title: "Yearly",
                 bigPrice: "$29.99",
@@ -201,7 +191,8 @@ struct PaywallScreen: View {
     private func selectPlan(_ id: String) {
         selectedID = id
         container.track("plan_selected",
-                        ["plan": id, "price_usd": id == "cashie_pro_monthly" ? "9.99" : "29.99"])
+                        ["plan": id, "price_usd": id == "cashie_pro_monthly" ? "9.99" : "29.99",
+                         "surface": "settings"])
     }
 
     // MARK: CTA
@@ -214,8 +205,6 @@ struct PaywallScreen: View {
             ) { handleStart() }
             .disabled(purchasing)
 
-            // Price + auto-renewal disclosure. Required on the subscribing
-            // screen (App Store Guideline 3.1.2). No free trial.
             Text(disclosureText)
                 .font(AppFont.text(11, weight: .medium))
                 .foregroundColor(Theme.Palette.inkMute)
@@ -281,9 +270,7 @@ struct PaywallScreen: View {
         purchasing = true
         let plan = selectedID
         let price = plan == "cashie_pro_monthly" ? "9.99" : "29.99"
-        container.track("checkout_started", ["plan": plan, "price_usd": price, "surface": "paywall"])
-        // Fallback when offerings haven't loaded yet: StoreKitService resolves
-        // the real product by id internally (and DEBUG-succeeds on simctl).
+        container.track("checkout_started", ["plan": plan, "price_usd": price, "surface": "settings"])
         let offering = offerings.first(where: { $0.id == plan }) ?? Offering(
             id: plan,
             displayTitle: "Cashie Pro",
@@ -296,21 +283,23 @@ struct PaywallScreen: View {
             await MainActor.run {
                 purchasing = false
                 if result == .success {
-                    completePurchase(surface: "paywall", plan: plan, priceUSD: price)
+                    completePurchase(plan: plan, priceUSD: price)
                 } else {
                     container.track("checkout_abandoned",
-                                    ["plan": plan, "surface": "paywall", "reason": "cancelled"])
+                                    ["plan": plan, "surface": "settings", "reason": "cancelled"])
                 }
             }
         }
     }
 
-    private func completePurchase(surface: String, plan: String, priceUSD: String) {
+    private func completePurchase(plan: String, priceUSD: String) {
         container.track("purchase_completed",
-                        ["plan": plan, "price_usd": priceUSD, "surface": surface,
+                        ["plan": plan, "price_usd": priceUSD, "surface": "settings",
                          "billing_period": plan.contains("monthly") ? "month" : "year"])
         markSubscribed()
-        container.advanceOnboarding(to: .welcomeIn)
+        // Revalidate against StoreKit so the cached entitlement matches, then close.
+        Task { _ = try? await container.subscriptions.refreshSubscriptionStatus() }
+        dismiss()
     }
 
     private func markSubscribed() {
@@ -319,126 +308,15 @@ struct PaywallScreen: View {
     }
 
     private func handleRestore() {
-        container.track("restore_tapped", ["surface": "paywall"])
+        container.track("restore_tapped", ["surface": "settings"])
         Task {
             if let ok = try? await container.subscriptions.restore(), ok {
                 await MainActor.run {
-                    container.track("restore_succeeded", ["surface": "paywall"])
+                    container.track("restore_succeeded", ["surface": "settings"])
                     markSubscribed()
-                    container.advanceOnboarding(to: .welcomeIn)
+                    dismiss()
                 }
             }
         }
-    }
-
-    // MARK: Analytics
-
-    private func trackPaywallViewed() {
-        let n = UserDefaults.standard.integer(forKey: paywallViewCountKey) + 1
-        UserDefaults.standard.set(n, forKey: paywallViewCountKey)
-        container.track("paywall_viewed",
-                        ["placement": "onboarding", "variant": "single_offer",
-                         "default_plan": selectedID, "view_index": String(n)])
-    }
-}
-
-// MARK: - Plan card
-
-/// Shared by the onboarding `PaywallScreen` and the dismissible
-/// `SubscriptionPaywallSheet` (You tab), so the two paywalls render identical
-/// plan cards. Internal (not private) for that reason.
-struct PlanCard: View {
-    let title: String
-    let bigPrice: String
-    let cadence: String
-    let footnote: String
-    let badge: String?
-    let oldPrice: String?
-    let isSelected: Bool
-    var accent: Color = Theme.Palette.green
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(AppFont.text(12, weight: .semibold))
-                            .tracking(1.2)
-                            .textCase(.uppercase)
-                            .foregroundColor(Theme.Palette.inkSoft)
-                        if let badge {
-                            Text(badge)
-                                .font(AppFont.text(9, weight: .heavy))
-                                .tracking(0.8)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(RoundedRectangle(cornerRadius: 4).fill(accent))
-                        }
-                    }
-                    Spacer(minLength: 0)
-                    tickbox
-                }
-
-                Spacer(minLength: 6)
-
-                if let oldPrice {
-                    Text(oldPrice)
-                        .font(AppFont.text(13, weight: .semibold))
-                        .strikethrough(true, color: Theme.Palette.inkMute)
-                        .foregroundColor(Theme.Palette.inkMute)
-                        .lineLimit(1)
-                }
-
-                Text(bigPrice)
-                    .font(AppFont.display(34, weight: .heavy))
-                    .foregroundColor(Theme.Palette.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Text(cadence)
-                    .font(AppFont.text(11, weight: .semibold))
-                    .foregroundColor(Theme.Palette.inkSoft)
-
-                Text(footnote)
-                    .font(AppFont.text(10))
-                    .foregroundColor(Theme.Palette.inkMute)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .padding(.top, 2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .frame(minHeight: 168)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(isSelected ? accent.opacity(0.06) : Theme.Palette.bgCream)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? accent : Theme.Palette.line,
-                            lineWidth: isSelected ? 2 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 14))
-            .animation(Theme.Motion.snap, value: isSelected)
-        }
-        .buttonStyle(.plainTappable)
-    }
-
-    private var tickbox: some View {
-        ZStack {
-            Circle()
-                .stroke(isSelected ? accent : Theme.Palette.line, lineWidth: 1.5)
-                .frame(width: 22, height: 22)
-            if isSelected {
-                Circle().fill(accent).frame(width: 22, height: 22)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundColor(.white)
-            }
-        }
-        .animation(Theme.Motion.snap, value: isSelected)
     }
 }

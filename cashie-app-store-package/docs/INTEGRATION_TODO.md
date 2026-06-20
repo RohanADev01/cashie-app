@@ -47,11 +47,9 @@ App Store Connect (section 3 below).
 - [x] Quick Log mint Edge Function now verifies Pro via Apple's App Store Server API (RevenueCat removed). To enable minting, set the App Store Connect API key secrets - `GO_LIVE_RUNBOOK.md` §6c
 
 ## 3. StoreKit products (App Store Connect)
-Product ids referenced in code (`StoreKitService.productIDs`) - full price first,
-two exit-intent rescues (see `pricing-and-paywall-optimization-plan.md`):
-`cashie_pro_monthly` ($9.99/mo), `cashie_pro_yearly` ($79.99/yr),
-`cashie_pro_yearly_mid` ($35.88/yr, rescue #1), `cashie_pro_yearly_special`
-($23.88/yr, rescue #2, final).
+Product ids referenced in code (`StoreKitService.productIDs`) - one screen, one
+offer (no rescue products):
+`cashie_pro_monthly` ($9.99/mo) and `cashie_pro_yearly_v2` ($29.99/yr).
 
 - [x] Local `Cashie/Resources/Cashie.storekit` config (referenced by the scheme) for simulator testing
 - [x] DEBUG fallback simulates a successful purchase when products can't load

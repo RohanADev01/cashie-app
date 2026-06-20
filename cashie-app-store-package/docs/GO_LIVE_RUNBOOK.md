@@ -104,15 +104,15 @@ to configure.
 | Plan | Product ID (App Store Connect) | Period | Price | Role |
 |---|---|---|---|---|
 | Monthly | `cashie_pro_monthly` | P1M | $9.99 | shown on paywall |
-| Yearly | `cashie_pro_yearly` | P1Y | $23.88 | shown on paywall (preselected) |
+| Yearly | `cashie_pro_yearly_v2` | P1Y | $29.99 | shown on paywall (preselected) |
 
 Both IDs are already used by the app (`StoreKitService.productIDs`) and the
 bundled `Cashie.storekit` test config, so **no app code change is needed for the
 IDs.** The only gap is that the products do not exist in App Store Connect yet.
 
 **Single paywall (Guideline 5.6):** both plans are shown on one paywall, yearly
-preselected. The yearly plan ($23.88) carries the discount inline - the
-struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 80%" is
+preselected. The yearly plan ($29.99) carries the discount inline - the
+struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 75%" is
 truthful. There is NO secondary / exit-intent / "rescue" offer wall; the prior
 two-tier funnel (`cashie_pro_yearly_mid` / `_special`) was removed to comply with
 the App Store 5.6 rejection, so those two products are no longer created or used.
@@ -122,7 +122,7 @@ the App Store 5.6 rejection, so those two products are no longer created or used
 1. App Store Connect -> your app -> Subscriptions -> create a subscription group
    "Cashie Pro".
 2. Add **both** auto-renewable subscriptions with the exact IDs/prices above:
-   `cashie_pro_monthly` ($9.99/mo) and `cashie_pro_yearly` ($23.88/yr). Do NOT
+   `cashie_pro_monthly` ($9.99/mo) and `cashie_pro_yearly_v2` ($29.99/yr). Do NOT
    create the old `cashie_pro_yearly_mid` / `cashie_pro_yearly_special` rescue
    products - the exit-intent funnel was removed for Guideline 5.6 compliance.
 3. Add a localized display name + description and a review screenshot for each.
@@ -388,7 +388,7 @@ end-to-end verification against the App Store, use a Sandbox Apple ID on a devic
 | 1 | `Cashie/App/Config.swift` | Set `supabaseAnonKey`, optional `postHogAPIKey`; swap `quickLogShortcutImportURL` + `applePayShortcutImportURL` from the `google.com` placeholders to the real Shortcut links (no purchase key needed) | **You, on the Mac** |
 | 2 | `Cashie/Resources/Cashie.storekit` | Only if prices change. Keep `introductoryOffer: null` (no trial). Already on canonical IDs | Optional |
 | 3 | `supabase/functions/mint-quick-log-key/` | Done - now verifies Pro via Apple's App Store Server API (RevenueCat removed). To enable minting, set the App Store Connect API key secrets (section 6c) | Optional (Quick Log only) |
-| 4 | App Store Connect | Create the **two** products: `cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88 - NO trial. Do NOT create the old mid/special rescue products (exit-intent funnel removed for Guideline 5.6) | **You, on the Mac** |
+| 4 | App Store Connect | Create the **two** products: `cashie_pro_monthly` $9.99, `cashie_pro_yearly_v2` $29.99 - NO trial. Do NOT create the old mid/special rescue products (exit-intent funnel removed for Guideline 5.6) | **You, on the Mac** |
 
 Everything else is dashboard / App Store Connect / Supabase configuration, not
 code. The full data-entry sheet is `app_store_submission/APP_STORE_CONNECT_FIELDS.md`,
@@ -408,7 +408,7 @@ Terms/Privacy links + disclosure, and the `PrivacyInfo.xcprivacy` manifest.
 ## 12. Pre-flight checklist
 
 - [ ] Section 2 done: App Store Connect has both products
-      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88),
+      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly_v2` $29.99),
       NO introductory offer, IDs matching `StoreKitService.productIDs`,
       submitted with the build.
 - [ ] On the device the paywall shows real App Store prices and a sandbox purchase

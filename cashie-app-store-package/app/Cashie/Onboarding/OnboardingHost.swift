@@ -12,7 +12,7 @@ struct OnboardingHost: View {
 
     var body: some View {
         ZStack {
-            Theme.Palette.bg.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             content
                 .transition(
                     .asymmetric(
@@ -61,7 +61,6 @@ struct OnboardingHost: View {
         case .reveal: RevealScreen()
         case .traits: TraitsScreen()
         case .pain: PainScreen()
-        case .solution: SolutionScreen()
         case .effort: EffortScreen()
         case .socialProof: SocialProofScreen()
         case .reviews: ReviewsScreen()
@@ -76,7 +75,6 @@ struct OnboardingHost: View {
         case .actionButtonSetup: ActionButtonSetupScreen()
         case .applePaySetup: ApplePaySetupScreen()
         case .currency: CurrencyScreen()
-        case .tryLive: TryLiveScreen()
         case .ready: ReadyScreen()
         }
     }

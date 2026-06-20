@@ -85,19 +85,19 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "23.88",
+          "displayPrice" : "29.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "8AB2D9C1-3F4E-49D2-B3F0-2D5A1B6E8FF0",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Cashie Pro · yearly access. Save 80% vs monthly.",
+              "description" : "Cashie Pro · yearly access. Save 75% vs monthly.",
               "displayName" : "Cashie Pro Yearly",
               "locale" : "en_US"
             }
           ],
-          "productID" : "cashie_pro_yearly",
+          "productID" : "cashie_pro_yearly_v2",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Cashie Pro Yearly",
           "subscriptionGroupID" : "8C6E1B3D-9AE6-4F14-9F1D-2E0F8B0C7C20",

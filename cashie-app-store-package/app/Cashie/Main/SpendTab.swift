@@ -1,27 +1,22 @@
 import SwiftUI
+import Combine
 
 struct SpendTab: View {
     @EnvironmentObject var container: AppContainer
     @State private var periodOffset: Int = 0   // 0 = current month, -1 = previous, ...
     @State private var selectedTx: Transaction?
+    @State private var selectedGoal: Goal?
     @State private var showBudgets = false
+    @State private var showQuickLogSetup = false
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    hero
-                    periodPager
-                        .padding(.top, 22)
-                    // Drag along the chart to scrub the running spend at each
-                    // point. (Manage Budgets is still reachable from the spend
-                    // figure above.)
-                    SpendChart(values: cumulativeTotals)
-                        .frame(height: 140)
-                        .padding(.top, 14)
+                VStack(alignment: .leading, spacing: 18) {
+                    heroHeader
+                    summaryCard
                     transactionsList
-                        .padding(.top, 24)
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 12)
@@ -33,6 +28,16 @@ struct SpendTab: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(item: $selectedGoal) { goal in
+            GoalDetailSheet(goal: goal)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showQuickLogSetup) {
+            QuickLogSetupSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showBudgets) {
             BudgetsSheet()
                 .presentationDetents([.large])
@@ -40,36 +45,42 @@ struct SpendTab: View {
         }
     }
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("Your spending")
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(0.6)
-                .textCase(.uppercase)
-                .foregroundColor(Theme.Palette.inkSoft)
-            EmphasizedHeadline(
-                raw: "Where it <em>goes.</em>",
-                font: AppFont.display(36, weight: .bold),
-                emColor: Theme.Palette.gold
-            )
-            .padding(.top, 4)
-            .padding(.bottom, 22)
+    private var heroHeader: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Your spending")
+                    .font(AppFont.text(11, weight: .semibold))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+                    .foregroundColor(Theme.Palette.inkSoft)
+                EmphasizedHeadline(
+                    raw: "Where it <em>went</em>",
+                    font: AppFont.display(36, weight: .bold),
+                    emColor: Theme.Palette.gold
+                )
+                .padding(.top, 4)
+            }
+            Spacer(minLength: 12)
+            QuickLogGlowButton(attentionShake: true) { showQuickLogSetup = true }
+        }
+    }
 
-            // Tapping the spend figure opens Manage Budgets, same as the chart.
+    /// The month switcher, the month's spend figure and its running-total chart,
+    /// all in one soft card so they read as a single connected unit. The month
+    /// nav sits at the top; tapping the figure opens Manage Budgets; dragging
+    /// along the chart scrubs the running spend at each point.
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
             Button { showBudgets = true } label: {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .firstTextBaseline) {
+                    HStack(alignment: .center) {
                         Text(periodKicker)
                             .font(AppFont.text(11, weight: .semibold))
                             .tracking(0.6)
                             .textCase(.uppercase)
                             .foregroundColor(Theme.Palette.inkSoft)
                         Spacer()
-                        Text("Set budgets →")
-                            .font(AppFont.text(11, weight: .medium))
-                            .tracking(0.5)
-                            .textCase(.uppercase)
-                            .foregroundColor(Theme.Palette.gold)
+                        PillLink(title: "Set budgets")
                     }
                     .padding(.bottom, 8)
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
@@ -94,80 +105,190 @@ struct SpendTab: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plainTappable)
+
+            VStack(spacing: 12) {
+                VStack(spacing: 6) {
+                    SpendChart(values: cumulativeTotals)
+                        .frame(height: 140)
+                    chartAxis
+                }
+                periodNav
+            }
         }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard(20)
     }
 
-    private var periodPager: some View {
-        HStack(spacing: 12) {
-            Button {
+    /// Minimal month switcher shown under the chart: the month in ink with small
+    /// ink chevrons on each side, no pill or button chrome, matching the flat
+    /// style of the rest of the app. Doubles as the chart's x-axis label.
+    private var periodNav: some View {
+        HStack(spacing: 16) {
+            navArrow(system: "chevron.left", enabled: true) {
                 withAnimation(Theme.Motion.snap) { periodOffset -= 1 }
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Theme.Palette.ink)
-                    .frame(width: 32, height: 32)
-                    .background(Circle().fill(Theme.Palette.bgCream))
-                    .overlay(Circle().stroke(Theme.Palette.line, lineWidth: 1))
             }
-            .buttonStyle(.plainTappable)
-
             Text(periodLabel)
                 .font(AppFont.text(13, weight: .semibold))
-                .tracking(0.6)
-                .textCase(.uppercase)
                 .foregroundColor(Theme.Palette.ink)
-                .frame(maxWidth: .infinity)
                 .monospacedDigit()
-
-            Button {
+                .frame(minWidth: 118)
+                .multilineTextAlignment(.center)
+            navArrow(system: "chevron.right", enabled: periodOffset < 0) {
                 withAnimation(Theme.Motion.snap) { periodOffset += 1 }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(periodOffset < 0 ? Theme.Palette.ink : Theme.Palette.inkMute)
-                    .frame(width: 32, height: 32)
-                    .background(Circle().fill(Theme.Palette.bgCream))
-                    .overlay(Circle().stroke(Theme.Palette.line, lineWidth: 1))
             }
-            .buttonStyle(.plainTappable)
-            .disabled(periodOffset >= 0)
-            .opacity(periodOffset >= 0 ? 0.5 : 1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Small, chrome-less ink chevron used by the month switcher.
+    private func navArrow(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(enabled ? Theme.Palette.ink : Theme.Palette.inkFaint)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainTappable)
+        .disabled(!enabled)
+    }
+
+    /// Date ticks under the chart so the x-axis reads as the month timeline: the
+    /// first plotted day, the middle, and the last (today, for the current
+    /// month), aligned to the chart's edges.
+    private var chartAxis: some View {
+        let count = cumulativeTotals.count
+        return HStack(spacing: 0) {
+            Text(axisLabel(dayIndex: 0))
+            Spacer()
+            if count > 2 {
+                Text(axisLabel(dayIndex: count / 2))
+                Spacer()
+            }
+            if count > 1 {
+                Text(axisLabel(dayIndex: count - 1))
+            }
+        }
+        .font(AppFont.text(10, weight: .medium))
+        .foregroundColor(Theme.Palette.inkMute)
+        .monospacedDigit()
+    }
+
+    private func axisLabel(dayIndex: Int) -> String {
+        let cal = Calendar.current
+        let date = cal.date(byAdding: .day, value: dayIndex, to: periodRange.start) ?? periodRange.start
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f.string(from: date)
+    }
+
+
+    @ViewBuilder private var transactionsList: some View {
+        if grouped.isEmpty {
+            emptyTransactions
+        } else {
+            transactionGroups
         }
     }
 
-    private var transactionsList: some View {
+    @ViewBuilder private var emptyTransactions: some View {
+        if periodOffset == 0 {
+            AddLogNudge(message: "No spends logged yet\nTap the + to add your first")
+                .padding(.top, 48)
+        } else {
+            Text("Nothing logged this month")
+                .font(AppFont.text(14, italic: true))
+                .foregroundColor(Theme.Palette.inkSoft)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 40)
+        }
+    }
+
+    private var transactionGroups: some View {
         VStack(alignment: .leading, spacing: 16) {
             ForEach(grouped, id: \.day) { group in
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(group.day).font(AppFont.subhead).foregroundColor(Theme.Palette.ink)
+                // Each day reads as its own "Where it went"-style card: a bold
+                // date header with the day's total on the right (ink, monospaced),
+                // then the rows, all inside one soft card for visual consistency
+                // with the home screen.
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(group.day)
+                            .font(AppFont.text(17, weight: .bold))
+                            .foregroundColor(Theme.Palette.ink)
                         Spacer()
                         Text(Money.format(group.total, cents: true))
-                            .font(AppFont.text(13, weight: .semibold))
-                            .foregroundColor(Theme.Palette.inkSoft)
+                            .font(AppFont.text(14, weight: .semibold))
+                            .foregroundColor(Theme.Palette.ink)
+                            .monospacedDigit()
                     }
-                    VStack(spacing: 0) {
-                        ForEach(group.txs) { tx in
-                            Button { selectedTx = tx } label: {
-                                TransactionRow(tx: tx)
-                                    .padding(.vertical, 10)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plainTappable)
-                            if tx.id != group.txs.last?.id {
-                                Divider().background(Theme.Palette.lineSoft)
-                            }
+                    .padding(.bottom, 4)
+
+                    ForEach(group.items) { item in
+                        Button { open(item) } label: {
+                            row(for: item)
+                                .padding(.vertical, 11)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plainTappable)
+                        if item.id != group.items.last?.id {
+                            Divider().background(Theme.Palette.lineSoft)
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.white))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.Palette.lineSoft, lineWidth: 1))
                 }
+                .padding(18)
+                .softCard(20)
             }
         }
     }
 
     // MARK: - Data
+
+    /// One row in the spend log: either a real transaction or a goal deposit
+    /// surfaced as a savings outflow. Deposits aren't stored as transactions,
+    /// so we synthesise these for display only (no extra rows in the DB).
+    private enum SpendItem: Identifiable {
+        case tx(Transaction)
+        case deposit(goal: Goal, deposit: Deposit)
+
+        var id: UUID {
+            switch self {
+            case .tx(let t): return t.id
+            case .deposit(_, let d): return d.id
+            }
+        }
+        var date: Date {
+            switch self {
+            case .tx(let t): return t.date
+            case .deposit(_, let d): return d.date
+            }
+        }
+        /// Amount that counts toward the period's spend. Deposits count as
+        /// outflow (money set aside); income contributes nothing to spend. This
+        /// keeps the Spend tab's total in step with the Today ring, which
+        /// already folds deposits into the month's outflow.
+        var spendAmount: Double {
+            switch self {
+            case .tx(let t): return t.category == .income ? 0 : t.amount
+            case .deposit(_, let d): return d.amount
+            }
+        }
+    }
+
+    @ViewBuilder private func row(for item: SpendItem) -> some View {
+        switch item {
+        case .tx(let tx): TransactionRow(tx: tx)
+        case .deposit(let goal, let deposit): DepositLogRow(goal: goal, deposit: deposit)
+        }
+    }
+
+    private func open(_ item: SpendItem) {
+        switch item {
+        case .tx(let tx): selectedTx = tx
+        case .deposit(let goal, _): selectedGoal = goal
+        }
+    }
 
     // MARK: - Period (week/month + offset)
 
@@ -187,10 +308,21 @@ struct SpendTab: View {
             .filter { $0.date >= r.start && $0.date < r.end }
     }
 
+    /// Transactions and goal deposits for the selected month, merged into a
+    /// single log feed.
+    private var periodItems: [SpendItem] {
+        let r = periodRange
+        let txItems = periodTransactions.map { SpendItem.tx($0) }
+        let depItems = container.goals.flatMap { goal in
+            goal.deposits
+                .filter { $0.date >= r.start && $0.date < r.end }
+                .map { SpendItem.deposit(goal: goal, deposit: $0) }
+        }
+        return txItems + depItems
+    }
+
     private var periodSpend: Double {
-        periodTransactions
-            .filter { $0.category != .income }
-            .reduce(0) { $0 + $1.amount }
+        periodItems.reduce(0) { $0 + $1.spendAmount }
     }
 
     private var periodSpendWhole: String {
@@ -260,25 +392,25 @@ struct SpendTab: View {
             dayCount = monthDays
         }
         var values = Array(repeating: 0.0, count: dayCount)
-        for tx in periodTransactions where tx.category != .income {
-            let idx = cal.dateComponents([.day], from: r.start, to: tx.date).day ?? 0
+        for item in periodItems {
+            let idx = cal.dateComponents([.day], from: r.start, to: item.date).day ?? 0
             if idx >= 0 && idx < dayCount {
-                values[idx] += tx.amount
+                values[idx] += item.spendAmount
             }
         }
         return values
     }
 
-    private var grouped: [(day: String, total: Double, txs: [Transaction])] {
+    private var grouped: [(day: String, total: Double, items: [SpendItem])] {
         let cal = Calendar.current
         let dayMonth = DateFormatter(); dayMonth.dateFormat = "EEE d MMM"
         let bucket = DateFormatter(); bucket.dateFormat = "yyyy-MM-dd"
-        let bucketed = Dictionary(grouping: periodTransactions) {
+        let bucketed = Dictionary(grouping: periodItems) {
             bucket.string(from: $0.date)
         }
         return bucketed.keys.sorted(by: >).map { key in
-            let txs = bucketed[key]!.sorted { $0.date > $1.date }
-            let total = txs.filter { $0.category != .income }.reduce(0) { $0 + $1.amount }
+            let items = bucketed[key]!.sorted { $0.date > $1.date }
+            let total = items.reduce(0) { $0 + $1.spendAmount }
             let date = bucket.date(from: key) ?? Date()
             let prefix: String? =
                 cal.isDateInToday(date) ? "Today" :
@@ -289,7 +421,7 @@ struct SpendTab: View {
             } else {
                 label = dayMonth.string(from: date)
             }
-            return (day: label, total: total, txs: txs)
+            return (day: label, total: total, items: items)
         }
     }
 }
@@ -349,6 +481,120 @@ struct TransactionRow: View {
         let f = DateFormatter()
         f.dateFormat = "EEE, MMM d"
         return f.string(from: tx.date)
+    }
+}
+
+/// A goal deposit shown in the spend log. Mirrors `TransactionRow` so the feed
+/// reads consistently, but uses the goal's emoji and reads as savings rather
+/// than a purchase. Tapping it opens the goal (where the deposit can be removed).
+struct DepositLogRow: View {
+    let goal: Goal
+    let deposit: Deposit
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                GlassTile(cornerRadius: 10)
+                Text(goal.emoji).font(.system(size: 18))
+            }
+            .frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Saved to \(goal.name)")
+                    .font(AppFont.text(15, weight: .medium))
+                    .foregroundColor(Theme.Palette.ink)
+                Text("Savings · \(timeLabel)")
+                    .font(AppFont.text(11))
+                    .foregroundColor(Theme.Palette.inkSoft)
+            }
+            Spacer()
+            Text(Money.format(deposit.amount, cents: true))
+                .font(AppFont.text(15, weight: .semibold))
+                .foregroundColor(Theme.Palette.ink)
+        }
+    }
+
+    private var timeLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f.string(from: deposit.date)
+    }
+}
+
+/// A small, glowing circular "Log with a tap" button. Subtle (icon-only) but a
+/// soft gold halo pings outward to draw the eye. Shared by the Spend tab header
+/// and the Quick Log modal; tapping opens the Quick Log setup.
+struct QuickLogGlowButton: View {
+    /// When true, the button shakes every few seconds to draw the eye, until the
+    /// user first taps it, then it stops for good (persisted).
+    var attentionShake: Bool = false
+    var action: () -> Void
+
+    @State private var pulse = false
+    @State private var shakeAttempts: CGFloat = 0
+    @AppStorage("quickLogGlowDiscovered") private var discovered = false
+
+    private let shakeTimer = Timer.publish(every: 2.6, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Button {
+            if !discovered { discovered = true }
+            action()
+        } label: {
+            ZStack {
+                // Halo behind the button, radiating gold outward and fading.
+                Circle()
+                    .fill(Theme.Palette.gold.opacity(0.45))
+                    .frame(width: 44, height: 44)
+                    .scaleEffect(pulse ? 1.6 : 1.0)
+                    .opacity(pulse ? 0.0 : 0.5)
+                Circle()
+                    .fill(Theme.Palette.gold)
+                    .frame(width: 44, height: 44)
+                    .shadow(color: Theme.Palette.gold.opacity(0.5), radius: 8, x: 0, y: 3)
+                Image(systemName: "hand.tap.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 44, height: 44)   // stable layout; the halo overflows visually
+        }
+        .buttonStyle(.plainTappable)
+        .accessibilityLabel("Log with a tap")
+        .modifier(GiftJiggleEffect(animatableData: shakeAttempts))
+        .onReceive(shakeTimer) { _ in
+            guard attentionShake, !discovered else { return }
+            withAnimation(.easeInOut(duration: 0.6)) { shakeAttempts += 1 }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) {
+                pulse = true
+            }
+        }
+    }
+}
+
+/// A "gift waiting to be opened" jiggle: the view grows then settles while
+/// rocking side to side a couple of times, all in place (around its own centre).
+/// Each whole-number increment of `animatableData` plays one burst.
+private struct GiftJiggleEffect: GeometryEffect {
+    var scaleAmount: CGFloat = 0.16   // peak growth (~+16%)
+    var angle: CGFloat = 0.22         // max tilt in radians (~12.5°)
+    var wobbles: CGFloat = 2          // rocks side to side this many times
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        // Fractional progress through the current burst (0 -> 1), so the grow
+        // always swells outward (never inverts on alternate bursts).
+        let t = animatableData - floor(animatableData)
+        let scale = 1 + scaleAmount * sin(t * .pi)
+        let rot = angle * sin(t * .pi * wobbles * 2)
+        let cx = size.width / 2
+        let cy = size.height / 2
+        let transform = CGAffineTransform.identity
+            .translatedBy(x: cx, y: cy)
+            .rotated(by: rot)
+            .scaledBy(x: scale, y: scale)
+            .translatedBy(x: -cx, y: -cy)
+        return ProjectionTransform(transform)
     }
 }
 

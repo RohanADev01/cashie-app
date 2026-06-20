@@ -1,32 +1,83 @@
 import SwiftUI
 
-/// The gamified rank card that headlines the Today tab. A premium dark
-/// surface tinted to the current tier, with the live animated medallion on
-/// the left and a clear "how far to the next rank" progress read on the
-/// right. Tapping it opens the full ladder.
+/// The gamified rank card that headlines the Today tab. A clean white floating
+/// card (the app's `softCard`) with the live animated medallion on the left and
+/// a clear "how far to the next rank" progress read on the right, so it sits in
+/// the same family as the pace card and every other surface. Tapping it opens
+/// the full ladder.
 struct RankHeroCard: View {
     let progress: RankProgress
     var onTap: () -> Void
 
     private var rank: Rank { progress.current }
-    private let cornerRadius: CGFloat = 16
 
     // Animate the progress bar filling on appear.
     @State private var animatedFraction: CGFloat = 0
 
     var body: some View {
         Button(action: onTap) {
-            ZStack {
-                background
-                content
+            HStack(spacing: 16) {
+                // Aura back on: its pulsing radial glow draws with no blend mode,
+                // so it reads as a soft tier-coloured halo even on the white card.
+                // richEffects off: this medallion lives inside the Today tab's
+                // scroll view, so the Canvas particles / blend-mode shine /
+                // godrays are dropped to keep scrolling smooth. The aura pulse +
+                // bob + tilt still give it life.
+                RankBadgeView(rank: rank, size: 52, animated: true,
+                              showsAura: true, richEffects: false)
+                    .frame(width: 74, height: 74)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("YOUR RANK")
+                        .font(AppFont.text(10, weight: .semibold))
+                        .tracking(1.2)
+                        .foregroundColor(Theme.Palette.inkMute)
+
+                    Text(rank.title)
+                        .font(AppFont.display(30, weight: .heavy))
+                        // On a white card the pale `highlight` stop washes out,
+                        // so the title is drawn from the saturated midtone down
+                        // to the shadow: still metallic, but high-contrast and
+                        // clearly legible for every tier.
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [rank.midtone, rank.shadow],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+
+                    progressBar
+                    caption
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(Theme.Palette.inkMute)
             }
+            .padding(18)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(rank.glow.opacity(0.45), lineWidth: 1)
+            // A light, tier-tinted gradient (the rank's own glow colour, kept
+            // pale) so the card feels alive without going dark. Same soft shadow
+            // as `softCard` so it still floats like every other surface.
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white)
+                    .overlay {
+                        LinearGradient(
+                            colors: [rank.glow.opacity(0.07), Color.clear],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    }
+                    .overlay {
+                        RadialGradient(
+                            colors: [rank.glow.opacity(0.06), .clear],
+                            center: .topLeading, startRadius: 8, endRadius: 220
+                        )
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             )
-            .shadow(color: rank.glow.opacity(0.30), radius: 14, x: 0, y: 6)
+            .shadow(color: Color.black.opacity(0.05), radius: 18, x: 0, y: 9)
+            .shadow(color: Color.black.opacity(0.025), radius: 2, x: 0, y: 1)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainTappable)
@@ -37,105 +88,45 @@ struct RankHeroCard: View {
         }
     }
 
-    // MARK: - Background
-
-    private var background: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: 0x191D24), Color(hex: 0x0D0F13)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [rank.glow.opacity(0.32), .clear],
-                center: .init(x: 0.16, y: 0.5),
-                startRadius: 8, endRadius: 230
-            )
-            RadialGradient(
-                colors: [rank.midtone.opacity(0.14), .clear],
-                center: .bottomTrailing, startRadius: 8, endRadius: 220
-            )
-        }
-    }
-
-    // MARK: - Content
-
-    private var content: some View {
-        HStack(spacing: 14) {
-            RankBadgeView(rank: rank, size: 60)
-                .frame(width: 96, height: 104)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your rank")
-                    .font(AppFont.text(10, weight: .semibold))
-                    .tracking(1.2)
-                    .textCase(.uppercase)
-                    .foregroundColor(.white.opacity(0.55))
-
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(rank.title)
-                        .font(AppFont.display(34, weight: .heavy))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [rank.highlight, rank.midtone],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-
-                progressBar
-                caption
-            }
-            .padding(.vertical, 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-    }
-
     private var progressBar: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.white.opacity(0.12))
+                Capsule().fill(Theme.Palette.ink.opacity(0.07))
                 Capsule()
                     .fill(
                         LinearGradient(
-                            colors: [rank.highlight, rank.midtone],
+                            colors: [rank.glow, rank.midtone],
                             startPoint: .leading, endPoint: .trailing
                         )
                     )
                     .frame(width: max(6, proxy.size.width * animatedFraction))
-                    .shadow(color: rank.glow.opacity(0.7), radius: 4, x: 0, y: 0)
             }
         }
         .frame(height: 6)
     }
 
-    private var caption: some View {
-        HStack(spacing: 0) {
-            if progress.isMaxed {
-                Text("Top rank reached · ")
-                    .font(AppFont.text(11, weight: .semibold))
-                    .foregroundColor(rank.highlight)
-                Text("\(formattedXP) XP")
+    @ViewBuilder private var caption: some View {
+        if progress.isMaxed {
+            Text("Top rank reached")
+                .font(AppFont.text(11, weight: .semibold))
+                .foregroundColor(rank.midtone)
+        } else if let next = progress.next {
+            HStack(spacing: 5) {
+                Text("\(formatted(progress.xpToNext)) XP to")
                     .font(AppFont.text(11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
-            } else if let next = progress.next {
-                Text("\(formatted(progress.xpToNext)) XP")
+                    .foregroundColor(Theme.Palette.inkSoft)
+                // A small medallion of the next tier, so the goal you're
+                // climbing toward is visible right in the caption.
+                RankBadgeView(rank: next, size: 15, animated: false, showsAura: false)
+                    .frame(width: 17, height: 17)
+                Text(next.title)
                     .font(AppFont.text(11, weight: .bold))
-                    .foregroundColor(.white)
-                Text(" to \(next.title)")
-                    .font(AppFont.text(11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(Theme.Palette.ink)
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         }
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
     }
-
-    private var formattedXP: String { formatted(progress.xp) }
 
     private func formatted(_ value: Int) -> String {
         let f = NumberFormatter()

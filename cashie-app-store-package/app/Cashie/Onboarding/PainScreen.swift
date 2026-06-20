@@ -5,7 +5,7 @@ struct PainScreen: View {
     @EnvironmentObject var state: OnboardingState
 
     var body: some View {
-        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .solution) }
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .socialProof) }
     }
 
     private var baseBody: some View {
@@ -13,7 +13,7 @@ struct PainScreen: View {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {
                 BackBar(onBack: { container.advanceOnboarding(to: .traits) },
-                        pageLabel: "Profile · 03 / 05")
+                        pageLabel: "Profile · 03 / 04")
 
                 Text("The leak")
                     .font(AppFont.text(11, weight: .semibold))
@@ -23,26 +23,27 @@ struct PainScreen: View {
 
                 EmphasizedHeadline(
                     raw: "You're losing about <em>\(formatted)</em> a year.",
-                    font: AppFont.display(34, weight: .bold)
+                    font: AppFont.display(34, weight: .bold),
+                    emColor: Theme.Palette.red
                 )
 
-                Text("Compounded over 5 years that's \(Money.format(state.selectedArchetype.painYearly * 5)), about a year of rent.")
+                Text("Across five years that's \(Money.format(state.selectedArchetype.painYearly * 5)), and none of it ever felt like a big deal.")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 10) {
-                        painCard("🍜", "Late-night food", "Most weeks, after 9pm.", state.selectedArchetype.painYearly * 0.32)
-                        painCard("📺", "Forgotten subscriptions", "3 you stopped using.", state.selectedArchetype.painYearly * 0.18)
-                        painCard("🛍", "Impulse hauls", "Sub-8s decisions add up.", state.selectedArchetype.painYearly * 0.30)
-                        painCard("🍻", "Round-buying nights", "Generosity tax.", state.selectedArchetype.painYearly * 0.20)
+                        painCard("🥡", "Food delivery", "A few orders a week.", state.selectedArchetype.painYearly * 0.32)
+                        painCard("🛍️", "Impulse buys", "Things you didn't really need.", state.selectedArchetype.painYearly * 0.30)
+                        painCard("🧋", "Coffee and drink runs", "A few dollars, most days.", state.selectedArchetype.painYearly * 0.20)
+                        painCard("💳", "Forgotten subscriptions", "A few you don't use anymore.", state.selectedArchetype.painYearly * 0.18)
                     }
                     .padding(.top, 14)
                     .padding(.bottom, 12)
                 }
 
                 PrimaryButton(title: "Show me how to stop it") {
-                    container.advanceOnboarding(to: .solution)
+                    container.advanceOnboarding(to: .socialProof)
                 }
             }
             .padding(.horizontal, 26)

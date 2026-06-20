@@ -268,8 +268,8 @@ struct CurrencyPickerSheet: View {
     }
 }
 
-/// Onboarding step: pick the display currency on its own screen, right before
-/// the first (fake) log, so every amount from there on shows correctly.
+/// Onboarding step: pick the display currency on its own screen near the end of
+/// setup, so every amount from there on shows correctly.
 struct CurrencyScreen: View {
     @EnvironmentObject var container: AppContainer
 
@@ -279,7 +279,7 @@ struct CurrencyScreen: View {
             subtitle: "We'll show every amount in this. You can change it anytime in You.",
             cta: "That's my currency",
             initialCode: Currencies.detected().code,
-            onConfirm: { container.advanceOnboarding(to: .tryLive) },
+            onConfirm: { container.advanceOnboarding(to: .ready) },
             onBack: { container.advanceOnboarding(to: .backTapTeaser) }
         )
     }

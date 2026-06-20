@@ -98,17 +98,11 @@ struct Archetype: Identifiable, Codable, Hashable {
         ),
     ]
 
-    /// Total people across every archetype. Used by the loading screen,
-    /// which fires before we know which archetype the user lands on.
-    static var totalPopulation: Int {
-        all.reduce(0) { $0 + $1.population }
-    }
-
-    /// "50k" - matches `populationLabel`'s shape so copy stays uniform.
-    static var totalPopulationLabel: String {
-        let value = Double(totalPopulation) / 1000.0
-        return String(format: "%.0fk", value)
-    }
+    /// Social-proof figure shown on the loading screen ("Cross-referencing Xk
+    /// profiles"). Set independently of the per-archetype `population`
+    /// allocation (which sums to 50k for the per-type "others like you" lines)
+    /// so the headline number can read bigger without reshuffling those.
+    static var totalPopulationLabel: String { "100k" }
 
     static let `default` = all.first(where: { $0.id == .yolo })!
 

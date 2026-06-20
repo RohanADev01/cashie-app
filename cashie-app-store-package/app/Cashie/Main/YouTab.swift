@@ -1,7 +1,9 @@
 import SwiftUI
+import StoreKit
 
 struct YouTab: View {
     @EnvironmentObject var container: AppContainer
+    @Environment(\.requestReview) private var requestReview
     @State private var showWrapped = false
     @State private var showArchetype = false
     @State private var showQuickLogSetup = false
@@ -9,15 +11,14 @@ struct YouTab: View {
     @State private var showPrivacy = false
     @State private var showSubscription = false
     @State private var showHelp = false
-    @State private var showBadges = false
     @State private var showStreak = false
     @State private var showCurrency = false
 
     var body: some View {
         ZStack {
-            Theme.Palette.bg.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 16) {
                     profileHeader
                     weeklyWrapCard
                     Button { showStreak = true } label: { streakCard }
@@ -26,6 +27,7 @@ struct YouTab: View {
                     statGrid
                     DividerLabel(text: "Settings", numeral: "I.")
                         .padding(.top, 8)
+                    rateCard
                     settingsList
                 }
                 .padding(.horizontal, 22)
@@ -41,7 +43,9 @@ struct YouTab: View {
         .sheet(isPresented: $showArchetype) {
             ArchetypeSheet(
                 archetype: container.user.archetype,
-                traits: container.user.traits
+                // Fall back to representative scores when the quiz hasn't run yet,
+                // so the impulse/planning/etc. stats card always shows.
+                traits: container.user.traits.isEmpty ? Trait.defaults : container.user.traits
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -61,9 +65,6 @@ struct YouTab: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .fullScreenCover(isPresented: $showBadges) {
-            BadgesSheet()
-        }
         .fullScreenCover(isPresented: $showStreak) {
             StreakCalendarSheet()
         }
@@ -78,9 +79,10 @@ struct YouTab: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showSubscription) {
-            SubscriptionSheet()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+            // A dismissible duplicate of the onboarding paywall, so users can
+            // review plans and switch between monthly/yearly from here.
+            SubscriptionPaywallSheet()
+                .presentationDetents([.large])
         }
         .alert("Reach Cashie", isPresented: $showHelp) {
             Button("Email support") { openHelp() }
@@ -102,6 +104,15 @@ struct YouTab: View {
             if args.contains("-openWrapped") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showWrapped = true }
             }
+            if args.contains("-openSubscription") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showSubscription = true }
+            }
+            if args.contains("-openQuickLogSetup") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showQuickLogSetup = true }
+            }
+            if args.contains("-openArchetype") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showArchetype = true }
+            }
         }
     }
 
@@ -114,16 +125,11 @@ struct YouTab: View {
         UIApplication.shared.open(url)
     }
 
-    /// Subscription row: paying users have nothing to choose here, so we
-    /// route them straight to Today instead of putting up a paywall-style
-    /// sheet. Free users still get the full subscription sheet so they can
-    /// see the Pro plans.
+    /// Subscription row: opens the dismissible paywall for everyone. Free users
+    /// see the Pro plans; existing subscribers use the same screen to switch
+    /// between the monthly and yearly plans.
     private func handleSubscriptionTap() {
-        if container.subscriptions.isSubscribed {
-            container.mainTab = .today
-        } else {
-            showSubscription = true
-        }
+        showSubscription = true
     }
 
     // MARK: - Profile header
@@ -137,8 +143,8 @@ struct YouTab: View {
                 .foregroundColor(Theme.Palette.inkSoft)
             EmphasizedHeadline(
                 raw: container.user.hasName
-                    ? "Hey, <em>\(container.user.firstName).</em>"
-                    : "<em>Hey there.</em>",
+                    ? "Hey, <em>\(container.user.firstName)</em>"
+                    : "<em>Hey there</em>",
                 font: AppFont.display(36, weight: .bold),
                 emColor: Theme.Palette.gold
             )
@@ -152,34 +158,31 @@ struct YouTab: View {
     private var archetypeCard: some View {
         Button(action: { showArchetype = true }) {
             HStack(spacing: 14) {
+                // Matches the saving + streak cards: a flat brand-green circle
+                // with the archetype emoji, same 48pt size.
                 ZStack {
                     Circle()
-                        .fill(Theme.Palette.goldPastel)
-                        .frame(width: 52, height: 52)
-                        .overlay(Circle().stroke(Theme.Palette.gold.opacity(0.25), lineWidth: 1))
+                        .fill(Theme.Palette.gold)
+                        .frame(width: 48, height: 48)
                     Text(container.user.archetype.emoji)
                         .font(.system(size: 24))
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(container.user.archetype.name)
-                        .font(AppFont.text(17, weight: .semibold))
+                        .font(AppFont.text(17, weight: .bold))
                         .foregroundColor(Theme.Palette.ink)
                     Text("\(container.user.archetype.matchPercent)% match · tap for the breakdown")
                         .font(AppFont.text(12, weight: .medium))
                         .foregroundColor(Theme.Palette.inkSoft)
                 }
-                Spacer()
+                Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(Theme.Palette.inkMute)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Theme.Palette.gold.opacity(0.25), lineWidth: 1)
-            )
+            .padding(.vertical, 16)
+            .softCard()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainTappable)
@@ -189,54 +192,32 @@ struct YouTab: View {
 
     private var weeklyWrapCard: some View {
         Button(action: { showWrapped = true }) {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(hex: 0x1FCC83),
-                        Color(hex: 0x04BA74),
-                        Color(hex: 0x036141),
-                    ],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                RadialGradient(colors: [.white.opacity(0.28), .clear],
-                               center: .topTrailing, startRadius: 4, endRadius: 220)
-                RadialGradient(colors: [.black.opacity(0.14), .clear],
-                               center: .bottomLeading, startRadius: 4, endRadius: 200)
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.20))
-                            .frame(width: 52, height: 52)
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(weeklyHeadline)
-                            .font(AppFont.text(20, weight: .bold))
-                            .foregroundColor(.white)
-                        Text(weeklySub)
-                            .font(AppFont.text(12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.92))
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.7))
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.Palette.gold)
+                        .frame(width: 48, height: 48)
+                    TwinkleIcon()
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(weeklyHeadline)
+                        .font(AppFont.text(17, weight: .bold))
+                        .foregroundColor(Theme.Palette.ink)
+                    Text(weeklySub)
+                        .font(AppFont.text(12, weight: .medium))
+                        .foregroundColor(Theme.Palette.inkSoft)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(Theme.Palette.inkMute)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .softCard()
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainTappable)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(hex: 0x036141).opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: Color(hex: 0x04BA74).opacity(0.28), radius: 8, x: 0, y: 4)
     }
 
     // MARK: - "Saving this month" — mirrors AppContainer.safeToSpend (the Today
@@ -259,55 +240,38 @@ struct YouTab: View {
     // MARK: - Streak (matches the fire-gradient card on the dashboard)
 
     private var streakCard: some View {
-        ZStack {
+        HStack(spacing: 14) {
             ZStack {
-                LinearGradient(
-                    colors: [Color(hex: 0xFF5E3A), Color(hex: 0xFF823C), Color(hex: 0xFFB24D)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                RadialGradient(colors: [.white.opacity(0.32), .clear],
-                               center: .topTrailing, startRadius: 4, endRadius: 200)
-                RadialGradient(colors: [.black.opacity(0.10), .clear],
-                               center: .bottomLeading, startRadius: 4, endRadius: 200)
+                Circle()
+                    .fill(Theme.Palette.streak)
+                    .frame(width: 48, height: 48)
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
             }
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 52, height: 52)
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(streakHeadline)
-                        .font(AppFont.text(20, weight: .bold))
-                        .foregroundColor(.white)
-                    Text(streakSubtitle)
-                        .font(AppFont.text(12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.92))
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.7))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(streakHeadline)
+                    .font(AppFont.text(17, weight: .bold))
+                    .foregroundColor(Theme.Palette.ink)
+                Text(streakSubtitle)
+                    .font(AppFont.text(12, weight: .medium))
+                    .foregroundColor(Theme.Palette.inkSoft)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Theme.Palette.inkMute)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(hex: 0xFF5E3A).opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: Color(hex: 0xFF5E3A).opacity(0.4), radius: 14, y: 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .softCard()
+        .contentShape(Rectangle())
     }
 
     // MARK: - 2x2 stats
 
     private var statGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
             stat("Total saved", Money.format(container.derivedTotalSaved))
             stat("With Cashie", "\(container.derivedMonthsActive) mo.")
             stat("Badges earned", "\(container.earnedBadgeCount)")
@@ -317,11 +281,10 @@ struct YouTab: View {
 
     // MARK: - Streak copy
 
+    /// Caption beside the big streak number. The number itself carries the
+    /// count, so this is just the label (or the empty state).
     private var streakHeadline: String {
-        let days = container.loggedStreak
-        if days == 0 { return "No streak yet" }
-        if days == 1 { return "1 day streak" }
-        return "\(days) day streak"
+        container.loggedStreak == 0 ? "No streak yet" : "\(container.loggedStreak) day streak"
     }
 
     private var streakSubtitle: String {
@@ -345,20 +308,60 @@ struct YouTab: View {
                 .foregroundColor(Theme.Palette.inkSoft)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .padding(18)
+        .softCard()
+    }
+
+    // MARK: - Rate prompt
+
+    private var rateCard: some View {
+        Button(action: rateOnAppStore) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Enjoying Cashie?")
+                        .font(AppFont.text(15, weight: .bold))
+                        .foregroundColor(Theme.Palette.ink)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Theme.Palette.inkMute)
+                }
+                HStack(spacing: 5) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(Color(hex: 0xFFC83D))
+                    }
+                }
+                Text("Tap to rate us five stars on the App Store.")
+                    .font(AppFont.text(12, weight: .medium))
+                    .foregroundColor(Theme.Palette.inkSoft)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .softCard()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainTappable)
+    }
+
+    /// Opens the App Store write-review page when we have the numeric app id;
+    /// before launch (id not set yet) it falls back to the in-app review prompt.
+    private func rateOnAppStore() {
+        container.track("rate_tapped")
+        let id = Config.appStoreID
+        if !id.isEmpty,
+           let url = URL(string: "https://apps.apple.com/app/id\(id)?action=write-review") {
+            UIApplication.shared.open(url)
+        } else {
+            requestReview()
+        }
     }
 
     // MARK: - Settings list (SF Symbols, monochrome ink)
 
     private var settingsList: some View {
         VStack(spacing: 0) {
-            row(systemImage: "rosette",
-                label: "Badges · \(container.earnedBadgeCount) of \(Badge.all.count)",
-                accent: Theme.Palette.gold, action: { showBadges = true })
-            row(systemImage: "sparkles", label: "Last week, wrapped",
-                accent: Theme.Palette.gold, action: { showWrapped = true })
             row(systemImage: "hand.tap.fill",
                 label: container.user.quickLogSetup
                     ? "Quick Log · re-run setup"
@@ -377,8 +380,8 @@ struct YouTab: View {
             row(systemImage: "envelope", label: "Get help",
                 action: { showHelp = true }, isLast: true)
         }
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .padding(.vertical, 4)
+        .softCard()
     }
 
     private func row(systemImage: String,
@@ -413,7 +416,35 @@ struct YouTab: View {
     }
 }
 
-/// Re-declared here because the version in TodayTab is `private`; both pages use the same divider.
+/// A gently flickering flame for the streak card: a soft scale + sway loop so
+/// the streak feels alive rather than a static glyph.
+private struct FlameIcon: View {
+    var size: CGFloat = 22
+    @State private var animate = false
+    var body: some View {
+        Image(systemName: "flame.fill")
+            .font(.system(size: size, weight: .bold))
+            .foregroundColor(Theme.Palette.streak)
+            .scaleEffect(animate ? 1.1 : 0.95)
+            .rotationEffect(.degrees(animate ? 3 : -3), anchor: .bottom)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) {
+                    animate = true
+                }
+            }
+    }
+}
+
+/// A static sparkle for the saving card.
+private struct TwinkleIcon: View {
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundColor(.white)
+    }
+}
+
+/// Shared section divider label used by the You tab.
 private struct DividerLabel: View {
     let text: String
     let numeral: String

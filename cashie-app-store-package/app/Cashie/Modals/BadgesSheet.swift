@@ -39,7 +39,7 @@ struct BadgesSheet: View {
             .padding(.top, 12)
             .padding(.bottom, 36)
         }
-        .background(Theme.Palette.bg.ignoresSafeArea())
+        .background(Theme.pageBackground.ignoresSafeArea())
         .sheet(item: $selectedBadge) { badge in
             BadgeDetailSheet(badge: badge)
                 .presentationDetents([.medium])
@@ -69,7 +69,7 @@ struct BadgesSheet: View {
                 .textCase(.uppercase)
                 .foregroundColor(Theme.Palette.inkSoft)
             EmphasizedHeadline(
-                raw: "Your <em>badges.</em>",
+                raw: "Your <em>badges</em>",
                 font: AppFont.display(36, weight: .bold),
                 emColor: Theme.Palette.gold
             )
@@ -105,8 +105,7 @@ struct BadgesSheet: View {
             .frame(width: 52, height: 52)
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.Palette.goldPastel))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.Palette.gold.opacity(0.25), lineWidth: 1))
+        .softCard()
     }
 
     private func formatted(_ v: Int) -> String {
@@ -126,7 +125,15 @@ private struct BadgeCard: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            BadgeView(badge: badge, unlocked: unlocked, size: 48)   // static (t = 0)
+            // Static (t = 0) medallion, flattened to one cached bitmap. Each
+            // badge layers ~5 gradients + a screen-blend highlight + a glow
+            // shadow; with 49 of them in the grid, re-compositing all those
+            // offscreen passes on every scroll frame is what made this screen
+            // lag. drawingGroup rasterises each medallion once so scrolling just
+            // moves a texture.
+            BadgeView(badge: badge, unlocked: unlocked, size: 48)
+                .padding(6)          // room so the earned-badge glow isn't clipped
+                .drawingGroup()
 
             Text(badge.title)
                 .font(AppFont.text(11.5, weight: .bold))
@@ -140,8 +147,7 @@ private struct BadgeCard: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 8)
         .frame(minHeight: 134)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard(14)
         .contentShape(RoundedRectangle(cornerRadius: 14))
         .onTapGesture { onTap() }
     }
@@ -211,7 +217,7 @@ private struct BadgeDetailSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 24)
-        .background(Theme.Palette.bg.ignoresSafeArea())
+        .background(Theme.pageBackground.ignoresSafeArea())
     }
 
     @ViewBuilder

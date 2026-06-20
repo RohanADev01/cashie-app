@@ -5,7 +5,6 @@ struct EffortScreen: View {
 
     private let rows: [(tag: String, body: String, highlight: Bool)] = [
         ("20 sec", "Map the back-tap to Quick Log.", false),
-        ("2 sec", "Apple Pay shortcut auto-fills the amount.", false),
         ("30 sec", "Set a goal you'd actually like.", false),
         ("Done", "No bank linking. No spreadsheets. No guilt.", true),
     ]

@@ -44,18 +44,16 @@ empty. If you want accounts in v1.0, section 9 is the gating code work.
 
 ## 1. Verified project facts
 
-- Min iOS: **16.0**  ·  Version: **1.0**  ·  Build: **1**  ·  SwiftUI, portrait only, **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`)
+- Min iOS: **16.0**  ·  Version: **1.2**  ·  Build: **4**  ·  App category: **Finance** (`LSApplicationCategoryType = public.app-category.finance`; secondary **Lifestyle** is App Store Connect only)  ·  SwiftUI, portrait only, **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`)
 - **Build with Xcode 26+ (iOS 26 SDK or later).** Apple rejects uploads built with an older SDK at validation - an iOS 17.5-SDK build fails. Update Xcode before you Archive.
 - Signing: `CODE_SIGN_STYLE = Automatic`, **`DEVELOPMENT_TEAM` is not set** (you set it on your Mac)
 - **No SPM dependencies** - subscriptions are native StoreKit 2 (RevenueCat removed)
 - Capabilities used: **Face ID** (usage string present), **Sign in with Apple**
   (button present, entitlement NOT yet added - see section 5)
-- Subscription products (StoreKit config `Cashie/Resources/Cashie.storekit`) - **four** auto-renewable, NO trial:
+- Subscription products (StoreKit config `Cashie/Resources/Cashie.storekit`) - **two** auto-renewable, NO trial:
   - `cashie_pro_monthly` - $9.99 / month (P1M) - shown on paywall
-  - `cashie_pro_yearly` - $79.99 / year (P1Y) - shown on paywall (preselected anchor)
-  - `cashie_pro_yearly_mid` - $35.88 / year (P1Y) - exit-intent rescue #1 ("70% off")
-  - `cashie_pro_yearly_special` - $23.88 / year (P1Y) - exit-intent rescue #2, final ("80% off")
-  Full price ($9.99 / $79.99) is shown first; the two rescue products surface only at exit-intent. Funnel detail: `pricing-and-paywall-optimization-plan.md`.
+  - `cashie_pro_yearly_v2` - $29.99 / year (P1Y) - shown on paywall (preselected; "SAVE 75%" against the $119.88 monthly-x12 reference)
+  One screen, one offer (no exit-intent rescue products) to stay within App Store Guideline 5.6.
 - Backend keys (`Cashie/App/Config.swift`): `supabaseURL` set; `supabaseAnonKey`
   intentionally **empty** in source. There is no RevenueCat key - native StoreKit needs none.
 
@@ -167,30 +165,27 @@ is **no RevenueCat** - the `pro` entitlement is read straight from Apple's
 offering to configure.
 
 1. **App Store Connect -> your app -> Subscriptions:** create one subscription
-   group ("Cashie Pro"), then **four** auto-renewable subscriptions with these
+   group ("Cashie Pro"), then **two** auto-renewable subscriptions with these
    exact product ids, prices, and **NO introductory offer (no trial)**:
 
    | Plan | Product ID | Price | Role |
    |---|---|---|---|
    | Monthly | `cashie_pro_monthly` | $9.99 | shown on paywall |
-   | Yearly | `cashie_pro_yearly` | $79.99 | shown on paywall (preselected anchor) |
-   | Yearly mid | `cashie_pro_yearly_mid` | $35.88 | exit-intent rescue #1 ("70% off") |
-   | Yearly deep | `cashie_pro_yearly_special` | $23.88 | exit-intent rescue #2, final ("80% off") |
+   | Yearly | `cashie_pro_yearly_v2` | $29.99 | shown on paywall (preselected; "SAVE 75%") |
 
    Set a localized display name and a review screenshot for each.
-2. **How the funnel uses them:** full price first ($79.99 yearly preselected /
-   $9.99 monthly); the rescue products never show until exit-intent ("Maybe
-   later" / backgrounding the app) - `$35.88` first, then `$23.88` once on a
-   later open, then the price locks at full price forever. All four resolve to
-   the same `pro` entitlement. Rationale: `pricing-and-paywall-optimization-plan.md`.
+2. **How the paywall uses them:** one screen, one offer - the yearly
+   (`cashie_pro_yearly_v2`, preselected) and monthly shown side by side, with the
+   yearly's struck-through `$119.88` (12 x $9.99) backing the "SAVE 75%" badge.
+   No exit-intent / rescue products (removed for Guideline 5.6). Both resolve to
+   the same `pro` entitlement.
 3. **Sandbox test on device:** add a sandbox tester in App Store Connect, sign in
    under Settings -> App Store -> Sandbox Account on the device, then verify
-   purchase + restore + paywall gating (including a rescue purchase) in the build.
+   purchase + restore + paywall gating in the build.
 
-(All four products must be created and approved - the paywall and its rescue
-offers are core to the app. The `.storekit` file only drives the simulator/Xcode
-runs; on a real device the rescue "Claim" buttons no-op until the products exist
-in App Store Connect.)
+(Both products must be created and approved - the paywall is core to the app. The
+`.storekit` file only drives the simulator/Xcode runs; on a real device a purchase
+no-ops until the products exist in App Store Connect.)
 
 ---
 
@@ -250,7 +245,7 @@ it depends on a signed-in user to mint a key.
 ## 12. App Store submission and review
 
 1. Attach the build to the App Store version.
-2. Attach the four IAP subscriptions to the version (first submission reviews the
+2. Attach the two IAP subscriptions to the version (first submission reviews the
    IAPs alongside the build).
 3. Fill "App Review Information": contact, and for Floor B a working demo account
    the reviewer can sign into.
@@ -265,9 +260,8 @@ Shared:
 - [ ] Team set, Automatic signing, builds to a real device.
 - [ ] **Sign in with Apple capability added** (`Cashie.entitlements` exists) OR the
       button removed for an offline-only ship.
-- [ ] Four IAPs created in App Store Connect with exact ids
-      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $79.99,
-      `cashie_pro_yearly_mid` $35.88, `cashie_pro_yearly_special` $23.88), NO trial.
+- [ ] Two IAPs created in App Store Connect with exact ids
+      (`cashie_pro_monthly` $9.99, `cashie_pro_yearly_v2` $29.99), NO trial.
 - [ ] Sandbox purchase + restore verified on device; paywall gates correctly.
 - [ ] App Store record uses public name **Cashie**, bundle id `com.cashie.app`.
 - [ ] Privacy policy URL + App Privacy declarations filled accurately.

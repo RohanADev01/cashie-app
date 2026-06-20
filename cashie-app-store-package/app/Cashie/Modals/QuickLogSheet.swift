@@ -187,6 +187,7 @@ struct QuickLogSheet: View {
     @State private var merchantName: String
     @State private var category: SpendCategory
     @State private var didAutosave = false
+    @State private var showSetup = false
     private let autosave: Bool
 
     /// Seeds the sheet from an optional prefill (deep link / App Intent). With no
@@ -208,9 +209,9 @@ struct QuickLogSheet: View {
                     Text("Quick Log")
                         .font(AppFont.display(28, weight: .bold))
                     Spacer()
-                    Text(mode == .income ? "· Income" : "· \(category.label)")
-                        .font(AppFont.headline)
-                        .foregroundColor(Theme.Palette.inkSoft)
+                    // Glowing tap-to-log shortcut in place of the old category
+                    // label + full-width banner. Opens the Quick Log setup.
+                    QuickLogGlowButton { showSetup = true }
                 }
                 .padding(.top, 18)
 
@@ -230,6 +231,11 @@ struct QuickLogSheet: View {
             .padding(.bottom, 30)
         }
         .onAppear(perform: autosaveIfNeeded)
+        .sheet(isPresented: $showSetup) {
+            QuickLogSetupSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     /// When opened via a deep link with `autosave=1` and a valid amount, log

@@ -50,7 +50,9 @@ extension Badge {
     @MainActor private static func saved(_ c: AppContainer) -> Int { Int(c.derivedTotalSaved) }
     @MainActor private static func funded(_ c: AppContainer) -> Int { c.derivedFundedGoalCount }
     @MainActor private static func deposits(_ c: AppContainer) -> Int { c.derivedDepositCount }
-    @MainActor private static func streak(_ c: AppContainer) -> Int { c.derivedStreakDays }
+    // The visible logging streak (a day counts if it was logged OR shielded),
+    // so spending a shield to save a streak also keeps these badges progressing.
+    @MainActor private static func streak(_ c: AppContainer) -> Int { c.loggedStreak }
     @MainActor private static func months(_ c: AppContainer) -> Int { c.derivedMonthsActive }
 
     // MARK: - Families (fine tiers, all achievable)
@@ -104,14 +106,14 @@ extension Badge {
     ]
 
     private static let streaks: [Badge] = [
-        Badge(id: "streak_3", title: "Warming Up", detail: "Hold a 2 day budget streak.", icon: "flame", xp: 28, tint: cFlame, target: 2, metric: { streak($0) }),
-        Badge(id: "streak_7", title: "On Fire", detail: "Hold a 5 day budget streak.", icon: "flame.fill", xp: 50, tint: cFlame, target: 5, metric: { streak($0) }),
-        Badge(id: "streak_14", title: "Relentless", detail: "Hold a 10 day budget streak.", icon: "flame.fill", xp: 85, tint: cFlame, target: 10, metric: { streak($0) }),
-        Badge(id: "streak_21", title: "Locked In", detail: "Hold a 15 day budget streak.", icon: "flame.circle", xp: 125, tint: cFlame, target: 15, metric: { streak($0) }),
-        Badge(id: "streak_30", title: "Untouchable", detail: "Hold a 21 day budget streak.", icon: "flame.circle.fill", xp: 175, tint: cFlame, target: 21, metric: { streak($0) }),
-        Badge(id: "streak_45", title: "Unbreakable", detail: "Hold a 30 day budget streak.", icon: "flame.circle.fill", xp: 250, tint: cFlame, target: 30, metric: { streak($0) }),
-        Badge(id: "streak_60", title: "Ironclad", detail: "Hold a 45 day budget streak.", icon: "bolt.shield.fill", xp: 350, tint: cFlame, target: 45, metric: { streak($0) }),
-        Badge(id: "streak_90", title: "Centurion", detail: "Hold a 60 day budget streak.", icon: "shield.fill", xp: 520, tint: cFlame, target: 60, metric: { streak($0) }),
+        Badge(id: "streak_3", title: "Warming Up", detail: "Hold a 2 day streak.", icon: "flame", xp: 28, tint: cFlame, target: 2, metric: { streak($0) }),
+        Badge(id: "streak_7", title: "On Fire", detail: "Hold a 5 day streak.", icon: "flame.fill", xp: 50, tint: cFlame, target: 5, metric: { streak($0) }),
+        Badge(id: "streak_14", title: "Relentless", detail: "Hold a 10 day streak.", icon: "flame.fill", xp: 85, tint: cFlame, target: 10, metric: { streak($0) }),
+        Badge(id: "streak_21", title: "Locked In", detail: "Hold a 15 day streak.", icon: "flame.circle", xp: 125, tint: cFlame, target: 15, metric: { streak($0) }),
+        Badge(id: "streak_30", title: "Untouchable", detail: "Hold a 21 day streak.", icon: "flame.circle.fill", xp: 175, tint: cFlame, target: 21, metric: { streak($0) }),
+        Badge(id: "streak_45", title: "Unbreakable", detail: "Hold a 30 day streak.", icon: "flame.circle.fill", xp: 250, tint: cFlame, target: 30, metric: { streak($0) }),
+        Badge(id: "streak_60", title: "Ironclad", detail: "Hold a 45 day streak.", icon: "bolt.shield.fill", xp: 350, tint: cFlame, target: 45, metric: { streak($0) }),
+        Badge(id: "streak_90", title: "Centurion", detail: "Hold a 60 day streak.", icon: "shield.fill", xp: 520, tint: cFlame, target: 60, metric: { streak($0) }),
     ]
 
     private static let loyalty: [Badge] = [

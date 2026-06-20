@@ -50,7 +50,7 @@ verbatim.
 
 | Field | Value |
 |---|---|
-| App Name (max 30) | `Cashie: Kind Money Tracker` |
+| App Name (max 30) | `Cashie: Smart Budget Tracker` |
 | Subtitle (max 30) | `Know what's safe to spend` |
 | Bundle ID | `com.cashie.app` |
 | SKU | `cashie-ios-001` |
@@ -60,7 +60,9 @@ verbatim.
 | Content Rights | Does NOT contain, show, or access third-party content -> "No" |
 | Age Rating | 4+ (answer every questionnaire item "None"; not in Kids category; no unrestricted web) |
 
-Alternate name options if `Cashie: Kind Money Tracker` is taken: `Cashie - Budget & Save` (22), `Cashie: Daily Budget` (20).
+Alternate name options if `Cashie: Smart Budget Tracker` is taken: `Cashie - Budget & Save` (22), `Cashie: Daily Budget` (20).
+
+> Home-screen icon label stays the short `Cashie` (`CFBundleDisplayName` in `Info.plist`). The long `Cashie: Smart Budget Tracker` is the App Store listing name only; a 28-character title would truncate under the icon.
 
 ---
 
@@ -100,7 +102,7 @@ Your data is yours. It is protected on device and synced to your own private, en
 
 SUBSCRIPTION REQUIRED
 Cashie is a subscription app. A paid Cashie Pro subscription is required to use the app and unlock all features. Plans:
-- Yearly: $23.88 per year (best value)
+- Yearly: $29.99 per year (best value)
 - Monthly: $9.99 per month
 
 Prices are shown in USD; you are billed in your local currency at the rate shown at checkout. There is no free trial. Payment is charged to your Apple Account at confirmation of purchase. The subscription renews automatically unless cancelled at least 24 hours before the end of the current period. Manage or cancel anytime in your Apple Account settings.
@@ -114,10 +116,14 @@ Privacy Policy: https://cashie.space/privacy
 budget,expense tracker,spending,savings,money manager,budgeting,save money,daily budget,finance,goal
 ```
 
-### What's New (release notes for 1.0)
+### What's New (release notes for 1.2)
 ```
-The first version of Cashie. Know what's safe to spend, save for what matters, and log a spend in one tap. Welcome in.
+More polish all around. Your saving goals now show right inside "Where it went" on the home screen, budgets shade from green to amber as you near a cap, and the goal and spend views got cleaner and more consistent. Logging with a tap is quicker to reach too.
 ```
+
+> Version 1.1 notes (for reference): "A fresh new look. We brightened up the whole app, added little touches of life and motion, refreshed onboarding, and polished a bunch of rough edges. Cleaner, lighter, and nicer to come back to every day."
+>
+> Version 1.0 notes (for reference): "The first version of Cashie. Know what's safe to spend, save for what matters, and log a spend in one tap. Welcome in."
 
 ### URLs
 | Field | Value |
@@ -175,8 +181,8 @@ EXACTLY match the app (`StoreKitService.productIDs`); see `GO_LIVE_RUNBOOK.md`
 section 2. Subscriptions are native StoreKit 2 - there is no RevenueCat to configure.
 
 **Single paywall (Guideline 5.6):** both products are shown on one paywall,
-yearly preselected. The yearly plan ($23.88) carries the discount inline - the
-struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 80%" is
+yearly preselected. The yearly plan ($29.99) carries the discount inline - the
+struck-through $119.88 is the genuine 12 x $9.99 monthly cost, so "SAVE 75%" is
 truthful. There is NO secondary / exit-intent / "rescue" offer wall (the prior
 two-tier funnel was removed to comply with the 5.6 rejection).
 
@@ -187,7 +193,7 @@ two-tier funnel was removed to comply with the 5.6 rejection).
 | Group Display Name / localization (shown to users, English) | `Cashie Pro` |
 | App Name (subscription group, if asked) | `Cashie` |
 
-> **Subscription group order/rank:** put `cashie_pro_yearly` at the top, then
+> **Subscription group order/rank:** put `cashie_pro_yearly_v2` at the top, then
 > monthly. Rank only affects upgrade/downgrade proration within the group; it
 > does not change what the paywall shows.
 
@@ -206,10 +212,10 @@ two-tier funnel was removed to comply with the 5.6 rejection).
 ### Product 2 - Yearly
 | Field | Value |
 |---|---|
-| Product ID | `cashie_pro_yearly` |
+| Product ID | `cashie_pro_yearly_v2` |
 | Reference Name (internal) | `Cashie Pro Yearly` |
 | Duration | 1 Year |
-| Price | $23.88 USD |
+| Price | $29.99 USD |
 | Display Name (max 30) | `Cashie Pro Yearly` |
 | Description (max 45) | `All of Cashie, best value. Billed yearly.` |
 | Introductory Offer | NONE |
@@ -223,7 +229,7 @@ two-tier funnel was removed to comply with the 5.6 rejection).
   file is named in each table above and lives in
   `screenshots/subscriptions/`. They are real device captures of the live
   paywall, so each price matches its product:
-  - `01_paywall_monthly_and_yearly.png` - $9.99 monthly + $23.88 yearly (products 1 & 2)
+  - `01_paywall_monthly_and_yearly.png` - $9.99 monthly + $29.99 yearly (products 1 & 2)
 - **Review note** (paste on each product): `Subscription unlocks the full app (hard paywall). Test with the Sandbox account in the App Review notes. There is a single paywall with both plans; there is no secondary or exit-intent offer.`
 - **Subscription privacy policy URL** (App Store Connect asks for this at the
   group level): `https://cashie.space/privacy`.
@@ -274,7 +280,7 @@ Two kinds, both ready to upload, in `screenshots/`:
 **B. Subscription review screenshots** (one required on each of the 2 products,
 see §5): `screenshots/subscriptions/` - `01_paywall_monthly_and_yearly.png`.
 This is a real capture of the live single paywall, so the on-screen price
-($9.99 monthly, $23.88 yearly) matches each product.
+($9.99 monthly, $29.99 yearly) matches each product.
 
 - 24-bit PNG, no transparency, each well under 8 MB.
 - Apple auto-scales the 6.9" set down to 6.5" and smaller, so you only upload the
@@ -366,7 +372,7 @@ Then in App Store Connect answer: Uses encryption -> Yes; Qualifies for exemptio
 
 ## 11. Final submit checklist
 
-- [ ] Subscription group + both products created (`cashie_pro_monthly` $9.99, `cashie_pro_yearly` $23.88), prices set, NO introductory offer, the matching `screenshots/subscriptions/` review screenshot attached to each, review note pasted.
+- [ ] Subscription group + both products created (`cashie_pro_monthly` $9.99, `cashie_pro_yearly_v2` $29.99), prices set, NO introductory offer, the matching `screenshots/subscriptions/` review screenshot attached to each, review note pasted.
 - [ ] Product IDs match the app (`StoreKitService.productIDs`); RUNBOOK section 2 done.
 - [ ] App Name, Subtitle, Promo Text, Description, Keywords, URLs, Copyright filled (only the §0 `<...>` inputs needed your own values).
 - [ ] iPhone marketing screenshots uploaded (6.9" or 6.5"; app is **iPhone-only**, no iPad set).

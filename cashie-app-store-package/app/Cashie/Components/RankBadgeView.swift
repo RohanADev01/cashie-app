@@ -21,6 +21,12 @@ struct RankBadgeView: View {
     var animated: Bool = true
     /// The aura + particles + godrays. Turn off for tight rows.
     var showsAura: Bool = true
+    /// The expensive offscreen flourishes: the Canvas particle field, the
+    /// blend-mode shine sweep, and the legendary godrays. Off keeps the cheap
+    /// life (pulsing aura, bob, tilt) but drops the per-frame offscreen passes,
+    /// so a medallion living inside a scrolling surface (the Today tab hero)
+    /// doesn't jank the scroll. The full-screen ladder/detail leave it on.
+    var richEffects: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -81,7 +87,7 @@ struct RankBadgeView: View {
                 .opacity(0.55 + 0.35 * pulse)
 
             // Legendary gets slow rotating godrays for a top-of-mountain feel.
-            if rank == .legendary {
+            if rank == .legendary && richEffects {
                 Circle()
                     .fill(
                         AngularGradient(
@@ -103,7 +109,7 @@ struct RankBadgeView: View {
                     .blendMode(.plusLighter)
             }
 
-            if motionOn {
+            if motionOn && richEffects {
                 particleField(t: t)
             }
         }
@@ -152,8 +158,11 @@ struct RankBadgeView: View {
         let tilt = motionOn ? sin(t * 0.7) * 2.2 : 0
 
         ZStack {
-            badgeArtwork
-            if motionOn { shineSweep(t: t) }
+            // Bake the procedural medallion's gradients + inner blend into one
+            // cached bitmap so the per-frame animation only transforms a texture
+            // (bob/tilt) instead of re-rasterising every gradient each tick.
+            badgeArtwork.drawingGroup()
+            if motionOn && richEffects { shineSweep(t: t) }
         }
         .frame(width: size, height: size)
         .rotationEffect(.degrees(tilt))

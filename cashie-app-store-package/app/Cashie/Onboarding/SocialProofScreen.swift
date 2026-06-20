@@ -14,7 +14,7 @@ struct SocialProofScreen: View {
             Theme.Palette.bg.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    BackBar(onBack: { container.advanceOnboarding(to: .solution) })
+                    BackBar(onBack: { container.advanceOnboarding(to: .pain) })
 
                     Text("12 months later")
                         .font(AppFont.text(11, weight: .semibold))

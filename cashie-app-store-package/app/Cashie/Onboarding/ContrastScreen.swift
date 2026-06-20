@@ -27,7 +27,7 @@ struct ContrastScreen: View {
                         font: AppFont.display(34, weight: .bold)
                     )
 
-                    Text("Tap WITH to see what changes.")
+                    Text("Tap WITH to see the glow up.")
                         .font(AppFont.callout)
                         .foregroundColor(Theme.Palette.inkSoft)
 
@@ -51,7 +51,7 @@ struct ContrastScreen: View {
         VStack(spacing: 0) {
             stageToggle
             VStack(alignment: .leading, spacing: 12) {
-                Text(stage == .without ? "Living on edge" : "Finally chill")
+                Text(stage == .without ? "Always low-key broke" : "Finally chill")
                     .font(AppFont.display(28, weight: .heavy))
                     .foregroundColor(.white)
                     .lineLimit(1)
@@ -167,14 +167,14 @@ struct ContrastScreen: View {
     private var currentLines: [String] {
         stage == .without
         ? [
-            "I avoid opening the bank app on Sundays",
-            "I lie awake doing the math at 1am",
-            "I skip the things I actually want, just in case"
+            "Too scared to check my balance",
+            "Payday money gone by the weekend",
+            "No clue where it actually went"
           ]
         : [
-            "I open the app and nothing's a surprise",
-            "I sleep without the math spiral",
-            "I go for what I want without flinching"
+            "I check my balance, zero panic",
+            "My money actually makes it to payday",
+            "I know where every dollar goes"
           ]
     }
 }

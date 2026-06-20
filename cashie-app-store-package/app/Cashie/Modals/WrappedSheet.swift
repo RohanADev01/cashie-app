@@ -1,15 +1,20 @@
 import SwiftUI
 
-/// Last 7 days, summarised. Every number on this sheet is derived from the
-/// user's transactions; nothing is hard-coded or estimated.
+/// The current calendar week, summarised. Every number on this sheet is derived
+/// from the user's transactions and matches the streak's week boundaries;
+/// nothing is hard-coded or estimated.
 struct WrappedSheet: View {
     @EnvironmentObject var container: AppContainer
     @Environment(\.dismiss) var dismiss
     @Environment(\.displayScale) private var displayScale
     @State private var posterImage: Image?
+    /// Soft looping pulse on the gradient-card icons so the wrap feels alive.
+    @State private var iconPulse = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Text("This week, wrapped")
@@ -25,7 +30,7 @@ struct WrappedSheet: View {
                 .padding(.top, 18)
 
                 EmphasizedHeadline(
-                    raw: "Your week, <em>wrapped.</em>",
+                    raw: "Your week, <em>wrapped</em>",
                     font: AppFont.display(40, weight: .bold)
                 )
 
@@ -66,8 +71,14 @@ struct WrappedSheet: View {
             }
             .padding(.horizontal, 22)
             .padding(.bottom, 30)
+            }
         }
-        .onAppear { renderPoster() }
+        .onAppear {
+            renderPoster()
+            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                iconPulse = true
+            }
+        }
     }
 
     // MARK: - Shareable poster
@@ -104,8 +115,8 @@ struct WrappedSheet: View {
         }
         let savedNote = savedNote(saved: saved)
 
-        let daysHeadline = "\(won) / 7 days logged"
-        let daysNote = daysLoggedNote(won: won)
+        let daysHeadline = "\(won) / \(daysElapsedThisWeek) days logged"
+        let daysNote = daysLoggedNote(won: won, elapsed: daysElapsedThisWeek)
 
         let topLabel: String?
         let topValue: String?
@@ -146,26 +157,31 @@ struct WrappedSheet: View {
             ? "Saving \(Money.format(saved, cents: true)) this month"
             : "Over by \(Money.format(-saved, cents: true)) this month"
         return gradientCard(
-            palette: saved >= 0 ? .green : .fire,
+            palette: .green,
             headline: headline,
             sub: savedNote(saved: saved)
         ) {
-            Text("💰").font(.system(size: 26))
+            Text("💰")
+                .font(.system(size: 26))
+                .scaleEffect(iconPulse ? 1.08 : 0.94)
         }
     }
 
     private var daysUnderBudgetCard: some View {
         let won = daysLoggedThisWeek
-        let headline = won == 0 ? "No logs yet this week" : "\(won) / 7 days logged"
+        let elapsed = daysElapsedThisWeek
+        let headline = won == 0 ? "No logs yet this week" : "\(won) / \(elapsed) days logged"
         return gradientCard(
             palette: .fire,
             headline: headline,
-            sub: daysLoggedNote(won: won)
+            sub: daysLoggedNote(won: won, elapsed: elapsed)
         ) {
             Image(systemName: "flame.fill")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.white)
                 .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                .scaleEffect(iconPulse ? 1.1 : 0.94)
+                .rotationEffect(.degrees(iconPulse ? 3 : -3), anchor: .bottom)
         }
     }
 
@@ -206,8 +222,7 @@ struct WrappedSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard()
     }
 
     private enum Tone { case gold, ink }
@@ -284,20 +299,26 @@ struct WrappedSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(tone == .gold ? Theme.Palette.goldPastel : Color.white)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(tone == .gold ? Theme.Palette.gold.opacity(0.3) : Theme.Palette.line, lineWidth: 1)
-        )
+        .softCard()
     }
 
     // MARK: - Derived
 
+    /// Start of the current calendar week (respects the locale's first weekday),
+    /// matching the streak's notion of "this week" so the two never disagree.
     private var weekStart: Date {
-        Calendar.current.startOfDay(for: Date().addingTimeInterval(-86400 * 6))
+        let cal = Calendar.current
+        return cal.dateInterval(of: .weekOfYear, for: Date())?.start
+            ?? cal.startOfDay(for: Date())
+    }
+
+    /// Days elapsed in the current week so far, today included (e.g. 6 on a
+    /// Saturday when the week starts Monday). The "days logged" denominator.
+    private var daysElapsedThisWeek: Int {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let days = (cal.dateComponents([.day], from: weekStart, to: today).day ?? 0) + 1
+        return min(7, max(1, days))
     }
 
     private var thisWeekTx: [Transaction] {
@@ -326,19 +347,19 @@ struct WrappedSheet: View {
             .sorted { $0.1 > $1.1 }
     }
 
-    /// How many of the last 7 calendar days (today included) the user kept up,
-    /// i.e. logged a transaction OR spent a shield on. Matches the streak's
-    /// "covered" definition exactly. The old metric counted days that were "on
-    /// pace" against the budget, but an idle no-spend day trivially stays under
-    /// the prorated cap, so it read 7/7 even when you only showed up a couple
-    /// of days.
+    /// Covered days (logged OR shielded) within the current calendar week, from
+    /// the week's start up to today. Matches the streak's "covered" definition
+    /// and its week boundaries, so the wrap can never claim more days than the
+    /// week has actually had (e.g. never 7/7 on a Saturday).
     private var daysLoggedThisWeek: Int {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         var logged = 0
-        for back in 0..<7 {
-            guard let day = cal.date(byAdding: .day, value: -back, to: today) else { continue }
+        var day = cal.startOfDay(for: weekStart)
+        while day <= today {
             if container.isCovered(day) { logged += 1 }
+            guard let next = cal.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
         }
         return logged
     }
@@ -358,14 +379,13 @@ struct WrappedSheet: View {
         return "Right at your monthly budget."
     }
 
-    private func daysLoggedNote(won: Int) -> String {
-        switch won {
-        case 7: return "You logged every day this week. Untouchable."
-        case 5...6: return "Logged most days this week. Strong rhythm."
-        case 3...4: return "A few days logged. Keep the chain going."
-        case 1...2: return "A couple of logs this week. Small steps count."
-        default: return "Nothing logged this week yet. Tap + to start."
-        }
+    private func daysLoggedNote(won: Int, elapsed: Int) -> String {
+        if won == 0 { return "Nothing logged this week yet. Tap + to start." }
+        if won >= elapsed { return "You logged every day this week. Untouchable." }
+        let ratio = Double(won) / Double(max(1, elapsed))
+        if ratio >= 0.66 { return "Logged most days this week. Strong rhythm." }
+        if ratio >= 0.34 { return "A few days logged. Keep the chain going." }
+        return "A couple of logs this week. Small steps count."
     }
 
 }

@@ -25,6 +25,7 @@ protocol SupabaseService: AnyObject {
 
     func loadTransactions() async throws -> [Transaction]
     func addTransaction(_ tx: Transaction) async throws
+    func updateTransaction(_ tx: Transaction) async throws
     func deleteTransaction(_ id: UUID) async throws
 
     func loadGoals() async throws -> [Goal]
@@ -113,6 +114,15 @@ final class MockSupabaseService: SupabaseService {
 
     func addTransaction(_ tx: Transaction) async throws {
         transactions.insert(tx, at: 0)
+        store.save(transactions, key: LocalStore.Key.transactions)
+    }
+
+    func updateTransaction(_ tx: Transaction) async throws {
+        if let idx = transactions.firstIndex(where: { $0.id == tx.id }) {
+            transactions[idx] = tx
+        } else {
+            transactions.insert(tx, at: 0)
+        }
         store.save(transactions, key: LocalStore.Key.transactions)
     }
 
@@ -214,7 +224,7 @@ final class SyncIndicator: ObservableObject {
 // JSON in `payload`; deletes store the raw UUID string.
 struct PendingOp: Codable, Identifiable, Equatable {
     enum Kind: String, Codable {
-        case addTransaction, deleteTransaction
+        case addTransaction, updateTransaction, deleteTransaction
         case saveGoal, deleteGoal
         case saveUser, saveBudgets, saveSettings
         case markNotificationsRead
@@ -287,6 +297,11 @@ actor SyncEngine: SupabaseService {
     func addTransaction(_ tx: Transaction) async throws {
         try? await local.addTransaction(tx)
         await track(.addTransaction, payload: encode(tx), dedupe: nil) { try await $0.addTransaction(tx) }
+    }
+
+    func updateTransaction(_ tx: Transaction) async throws {
+        try? await local.updateTransaction(tx)
+        await track(.updateTransaction, payload: encode(tx), dedupe: "tx:\(tx.id.uuidString)") { try await $0.updateTransaction(tx) }
     }
 
     func deleteTransaction(_ id: UUID) async throws {
@@ -438,7 +453,13 @@ actor SyncEngine: SupabaseService {
             try? await local.replaceGoals(goals)
             try? await local.replaceNotifications(notifs)
             try? await local.saveBudgets(budgets)
-            try? await local.saveSettings(settings)
+            // Streak shields are device-local (see StreakEngine; the remote
+            // app_settings row doesn't carry them). Preserve whatever this
+            // device already has so a remote pull can't blank them out and
+            // silently reset the logging streak.
+            var mergedSettings = settings
+            mergedSettings.shieldedDayKeys = (try? await local.loadSettings())?.shieldedDayKeys ?? []
+            try? await local.saveSettings(mergedSettings)
 
             if let handler = onRemoteMerge { await handler() }
         } catch {
@@ -460,6 +481,7 @@ actor SyncEngine: SupabaseService {
     private func apply(_ op: PendingOp, to remote: SupabaseService) async throws {
         switch op.kind {
         case .addTransaction:    try await remote.addTransaction(decode(op.payload))
+        case .updateTransaction: try await remote.updateTransaction(decode(op.payload))
         case .deleteTransaction: try await remote.deleteTransaction(decodeID(op.payload))
         case .saveGoal:          try await remote.saveGoal(decode(op.payload))
         case .deleteGoal:        try await remote.deleteGoal(decodeID(op.payload))
@@ -668,6 +690,13 @@ final class LiveSupabaseService: SupabaseService, RealtimeCapable {
         try await send(method: "POST", path: "rest/v1/transactions",
                        query: [.init(name: "on_conflict", value: "id")],
                        body: body, prefer: "resolution=merge-duplicates,return=minimal")
+    }
+
+    // Editing a logged transaction (e.g. changing its category) upserts the
+    // same row by id, so the existing record is overwritten in place rather
+    // than duplicated.
+    func updateTransaction(_ tx: Transaction) async throws {
+        try await addTransaction(tx)
     }
 
     func deleteTransaction(_ id: UUID) async throws {

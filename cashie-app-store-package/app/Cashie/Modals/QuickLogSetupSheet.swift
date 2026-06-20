@@ -11,7 +11,7 @@ struct QuickLogSetupSheet: View {
     @State private var step: Step = .teaser
     @State private var trigger: Trigger = .backTap
 
-    enum Step { case teaser, key, triggers, done }
+    enum Step { case teaser, setup, done }
 
     var body: some View {
         ZStack {
@@ -22,8 +22,7 @@ struct QuickLogSetupSheet: View {
                 Group {
                     switch step {
                     case .teaser: teaser
-                    case .key: keyView
-                    case .triggers: triggers
+                    case .setup: setupView
                     case .done: doneView
                     }
                 }
@@ -61,8 +60,7 @@ struct QuickLogSetupSheet: View {
     private func back() {
         switch step {
         case .teaser: dismiss()
-        case .key: step = .teaser
-        case .triggers: step = .key
+        case .setup: step = .teaser
         case .done: dismiss()
         }
     }
@@ -80,7 +78,7 @@ struct QuickLogSetupSheet: View {
                         .foregroundColor(Theme.Palette.inkSoft)
 
                     EmphasizedHeadline(
-                        raw: "Three ways to <em>log a spend.</em>",
+                        raw: "Two ways to <em>log a spend.</em>",
                         font: AppFont.display(34, weight: .bold)
                     )
 
@@ -100,7 +98,7 @@ struct QuickLogSetupSheet: View {
             }
 
             PrimaryButton(title: "Set it up", trailingArrow: false, background: Theme.Palette.gold) {
-                step = .key
+                step = .setup
             }
             GhostButton(title: "Maybe later") { dismiss() }
         }
@@ -109,7 +107,7 @@ struct QuickLogSetupSheet: View {
     /// Tappable "method" card on the teaser. Picking one jumps to the key step,
     /// then lands on that trigger's instructions preselected.
     private func methodCard(_ t: Trigger) -> some View {
-        Button(action: { trigger = t; step = .key }) {
+        Button(action: { trigger = t; step = .setup }) {
             HStack(spacing: 14) {
                 Image(systemName: t.cardIcon)
                     .font(.system(size: 18, weight: .semibold))
@@ -138,42 +136,16 @@ struct QuickLogSetupSheet: View {
 
     // MARK: - Step 2, API key + import
 
-    private var keyView: some View {
-        // Header, key card, and the Next button all scroll together.
+    // MARK: - Step 2, single combined setup page (matches onboarding)
+
+    /// Everything for the chosen trigger on one page: the numbered 1–4 steps,
+    /// then the visual guide (swipe for Back Tap, screenshot for Action Button),
+    /// then the API key + import controls. A switch link swaps triggers inline,
+    /// so there's no separate redundant "pick a trigger" step.
+    private var setupView: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your shortcut key")
-                    .font(AppFont.text(11, weight: .semibold))
-                    .tracking(2)
-                    .textCase(.uppercase)
-                    .foregroundColor(Theme.Palette.inkSoft)
-
-                EmphasizedHeadline(raw: "Copy your <em>API key.</em>",
-                                   font: AppFont.display(30, weight: .bold))
-
-                QuickLogKeyCard(importShortcutURL: trigger.importURL,
-                                assignStep: trigger.assignStep)
-                    .padding(.top, 2)
-
-                PrimaryButton(title: "Next · Pick a trigger",
-                              trailingArrow: false,
-                              background: Theme.Palette.gold) {
-                    step = .triggers
-                }
-                .padding(.top, 2)
-            }
-            .padding(.top, 6)
-            .padding(.bottom, 8)
-        }
-    }
-
-    // MARK: - Step 2, Pick a trigger + follow the steps
-
-    private var triggers: some View {
-        // Header, chooser, steps, and the action buttons all scroll together.
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Pick your trigger")
+                Text("Set it up")
                     .font(AppFont.text(11, weight: .semibold))
                     .tracking(2)
                     .textCase(.uppercase)
@@ -182,63 +154,51 @@ struct QuickLogSetupSheet: View {
                 EmphasizedHeadline(raw: trigger.headline, font: AppFont.display(30, weight: .bold))
                     .fixedSize(horizontal: false, vertical: true)
 
-                triggerChips
+                // a) the numbered 1–4 steps
+                QuickLogStepsCard(assignStep: trigger.assignStep)
 
-                VStack(spacing: 12) {
-                    if let note = trigger.note {
-                        Text(note)
-                            .font(AppFont.text(13))
-                            .foregroundColor(Theme.Palette.inkSoft)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.goldPastel.opacity(0.5)))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.Palette.line, lineWidth: 1))
-                    }
-                    ForEach(Array(trigger.steps.enumerated()), id: \.offset) { _, s in
-                        HStack(alignment: .top, spacing: 14) {
-                            Image(systemName: s.icon)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Theme.Palette.gold)
-                                .frame(width: 28, height: 28)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Theme.Palette.goldLight))
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(s.title).font(AppFont.title3)
-                                Text(s.body).font(AppFont.text(13))
-                                    .foregroundColor(Theme.Palette.inkSoft)
-                            }
-                            Spacer()
-                        }
-                        .padding(16)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.Palette.line, lineWidth: 1))
-                    }
+                // b) the visual guide
+                if trigger == .backTap {
+                    Text("Watch how")
+                        .font(AppFont.text(11, weight: .semibold))
+                        .tracking(2)
+                        .textCase(.uppercase)
+                        .foregroundColor(Theme.Palette.inkSoft)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    SetupWalkthrough.backTap
+                } else if trigger == .actionButton {
+                    SettingsScreenshotCard(
+                        imageName: "ActionButtonGuide",
+                        caption: "Set the Action Button to 'Cashie Quick Log'.",
+                        maxHeight: 300
+                    )
                 }
 
+                // c) the API key + copy + import controls (steps shown above)
+                QuickLogKeyCard(importShortcutURL: trigger.importURL,
+                                assignStep: trigger.assignStep,
+                                showSteps: false)
+
                 triggerActions
+                switchLink
             }
             .padding(.top, 2)
             .padding(.bottom, 8)
         }
     }
 
-    private var triggerChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(Trigger.allCases) { t in
-                    Button(action: { trigger = t }) {
-                        Text(t.chip)
-                            .font(AppFont.text(13, weight: .semibold))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Capsule().fill(trigger == t ? Theme.Palette.goldLight : Theme.Palette.bgCream))
-                            .overlay(Capsule().stroke(trigger == t ? Theme.Palette.gold : Theme.Palette.line, lineWidth: 1))
-                            .foregroundColor(Theme.Palette.ink)
-                    }
-                    .buttonStyle(.plainTappable)
-                }
-            }
-            .padding(.vertical, 2)
-        }
+    /// Swaps to the other tap trigger inline (Back Tap <-> Action Button) so the
+    /// user never has to back out to re-pick.
+    private var switchLink: some View {
+        let other: Trigger = (trigger == .backTap) ? .actionButton : .backTap
+        let label = (trigger == .backTap)
+            ? "My phone has the Action Button, switch"
+            : "Use Back Tap instead"
+        return Button(label) { withAnimation { trigger = other } }
+            .font(AppFont.text(12, weight: .medium))
+            .foregroundColor(Theme.Palette.gold)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 6)
     }
 
     @ViewBuilder
@@ -291,6 +251,11 @@ private extension QuickLogSetupSheet {
     enum Trigger: String, CaseIterable, Identifiable {
         case backTap, actionButton, applePay
         var id: String { rawValue }
+
+        /// Apple Pay is temporarily hidden from the picker. The case (and all its
+        /// copy/steps below) is kept intact, so re-enabling it is just adding
+        /// `.applePay` back to this list.
+        static var allCases: [Trigger] { [.backTap, .actionButton] }
 
         /// The name of the shortcut the user imports for this trigger. The
         /// tap-based triggers share one shortcut; Apple Pay uses its own.

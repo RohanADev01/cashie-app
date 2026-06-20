@@ -58,14 +58,14 @@ final class MockSubscriptionService: SubscriptionService {
 
     func loadOfferings() async throws -> [Offering] {
         // Mirrors the live StoreKit products and dashboard pricing
-        // ($9.99/mo, $23.88/yr).
+        // ($9.99/mo, $29.99/yr).
         [
             Offering(
-                id: "cashie_pro_yearly",
+                id: "cashie_pro_yearly_v2",
                 displayTitle: "Cashie Pro · Yearly",
-                displayPrice: "$23.88",
+                displayPrice: "$29.99",
                 billingPeriod: "year",
-                monthlyEquivalent: "$1.99 / mo",
+                monthlyEquivalent: "$2.49 / mo",
                 oldPrice: nil
             ),
             Offering(

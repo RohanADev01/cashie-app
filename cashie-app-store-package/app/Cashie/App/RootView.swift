@@ -7,6 +7,10 @@ struct RootView: View {
     @EnvironmentObject var privacyLock: PrivacyLockService
 
     var body: some View {
+        mainBody
+    }
+
+    private var mainBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
 

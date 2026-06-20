@@ -1,185 +1,114 @@
 import SwiftUI
 import StoreKit
 
-/// Standalone social-proof screen between SocialProof and Paywall: a few real
-/// reviews plus the App Store average. Tapping "Show me the plan" fires Apple's
-/// native in-app rating prompt (`requestReview`) and advances. That prompt is
-/// fully Apple-controlled (no pre-fill, no callback) and iOS rate-limits it
-/// (~3x/year), so it may not appear; either way onboarding continues normally.
+/// A minimal rating ask shown between SocialProof and Paywall, styled like the
+/// feature tour: one centered visual (five stars) under a short headline.
+///
+/// Apple's in-app rating prompt (`requestReview`) is fire-and-forget: it has no
+/// completion callback, so we can't know whether the user rated or tapped "Not
+/// Now", and iOS rate-limits it (~3x/year) so it may not appear at all.
+///
+/// Because of that, tapping a star or "Rate Cashie" only *opens* the prompt; it
+/// does NOT advance. Once the prompt has been requested the CTA turns into
+/// "Continue", so moving on is always a separate, explicit tap the user makes
+/// after they've dealt with (or dismissed) the rating modal. Full-screen
+/// tap-to-continue is off here so a stray tap can't skip past the rating.
 struct ReviewsScreen: View {
     @EnvironmentObject var container: AppContainer
     @Environment(\.requestReview) private var requestReview
 
+    /// Set once the native prompt has been requested. Flips the CTA from
+    /// "Rate Cashie" (opens the prompt) to "Continue" (advances).
+    @State private var hasRequested = false
+
     var body: some View {
-        baseBody.tapAnywhereToContinue { submitAndContinue() }
+        baseBody
     }
 
     private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    BackBar(onBack: { container.advanceOnboarding(to: .socialProof) })
+            GoldBlob(alignment: .topTrailing, size: 360, intensity: 0.10).ignoresSafeArea()
 
-                    Text("From the people using it")
+            VStack(spacing: 0) {
+                BackBar(onBack: { container.advanceOnboarding(to: .socialProof) })
+                    .padding(.horizontal, 26)
+
+                Spacer(minLength: 8)
+
+                stars
+                    .frame(height: 280)
+
+                Spacer(minLength: 16)
+
+                VStack(spacing: 12) {
+                    Text("Enjoying Cashie?")
                         .font(AppFont.text(11, weight: .semibold))
                         .tracking(2)
                         .textCase(.uppercase)
-                        .foregroundColor(Theme.Palette.inkSoft)
+                        .foregroundColor(Theme.Palette.gold)
                     EmphasizedHeadline(
-                        raw: "Help us make Cashie <em>better.</em>",
-                        font: AppFont.display(34, weight: .bold),
-                        emColor: Theme.Palette.gold
+                        raw: "Help us with a <em>quick rating</em>.",
+                        font: AppFont.display(38, weight: .bold)
                     )
-                    .padding(.top, 4)
-                    Text("Skim a few real ones from people like you.")
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    Text(supportingText)
                         .font(AppFont.callout)
                         .foregroundColor(Theme.Palette.inkSoft)
-                        .padding(.top, 8)
-
-                    averageStars
-                        .padding(.top, 22)
-
-                    ForEach(reviews) { review in
-                        ReviewCard(review: review)
-                    }
-
-                    Spacer(minLength: 16)
-
-                    PrimaryButton(title: "Show me the plan") {
-                        submitAndContinue()
-                    }
-                    .padding(.top, 22)
+                        .multilineTextAlignment(.center)
                 }
-                .padding(.horizontal, 26)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 32)
+
+                Spacer(minLength: 8)
+
+                PrimaryButton(title: hasRequested ? "Continue" : "Rate Cashie") {
+                    if hasRequested {
+                        advance()
+                    } else {
+                        requestRating()
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 6)
+                .padding(.bottom, 24)
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private var supportingText: String {
+        hasRequested
+            ? "Thanks for the love! Tap continue when you're ready."
+            : "Tap the stars to rate Cashie on the App Store. It takes a second and really helps."
+    }
+
+    /// Five large, tappable stars. Tapping any of them opens Apple's native
+    /// rating prompt (same as the button); it does not advance on its own.
+    private var stars: some View {
+        HStack(spacing: 12) {
+            ForEach(0..<5, id: \.self) { _ in
+                Button { requestRating() } label: {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundColor(Color(hex: 0xF5B700))
+                }
+                .buttonStyle(.plainTappable)
             }
         }
     }
 
-    /// Fires Apple's native in-app rating prompt ("Enjoying Cashie? Tap a star
-    /// to rate it on the App Store"), letting the user rate without leaving the
-    /// app, then advances. The system prompt is presented at the window-scene
-    /// level so it stays up over the next screen; iOS may suppress it
-    /// (rate-limited to ~3 times a year), in which case we simply continue.
-    private func submitAndContinue() {
+    /// Opens Apple's native in-app rating prompt and flips the CTA to "Continue".
+    /// We never auto-advance: the prompt has no callback, so the user moves on
+    /// themselves once they've rated or dismissed it. iOS may suppress the prompt
+    /// (rate-limited), in which case the CTA still becomes "Continue" so the user
+    /// is never stuck.
+    private func requestRating() {
         requestReview()
+        withAnimation(Theme.Motion.snap) { hasRequested = true }
+    }
+
+    private func advance() {
         container.advanceOnboarding(to: .contrast)
-    }
-
-    // MARK: - Rolling stars summary
-
-    private var averageStars: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 2) {
-                    ForEach(0..<5, id: \.self) { _ in
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(Color(hex: 0xF5B700))
-                    }
-                }
-                Text("4.9 average · 2,418 ratings")
-                    .font(AppFont.text(11, weight: .semibold))
-                    .tracking(0.4)
-                    .foregroundColor(Theme.Palette.inkSoft)
-            }
-            Spacer()
-            Text("App Store")
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(0.6)
-                .textCase(.uppercase)
-                .foregroundColor(Theme.Palette.inkMute)
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
-    }
-
-    // MARK: - Reviews
-
-    private var reviews: [Review] {
-        [
-            Review(initial: "M", name: "Maya R.",
-                   stars: 5, date: "Mar 2026",
-                   verified: true,
-                   body: "Logged 8 spends in my first day. The 'where it went' page genuinely shocked me. Up $312 in week one."),
-            Review(initial: "J", name: "Jordan T.",
-                   stars: 5, date: "Feb 2026",
-                   verified: true,
-                   body: "First money app I haven't ghosted by week two. Back-tap is the unlock, I forget I'm tracking."),
-            Review(initial: "R", name: "Riley K.",
-                   stars: 5, date: "Jan 2026",
-                   verified: false,
-                   body: "Sounds dumb until you do it. Saved $640 in two months without 'budgeting' once."),
-        ]
-    }
-}
-
-// MARK: - Review model + card (shared with prior screen if needed)
-
-struct Review: Identifiable, Hashable {
-    let id = UUID()
-    let initial: String
-    let name: String
-    let stars: Int
-    let date: String
-    let verified: Bool
-    let body: String
-}
-
-struct ReviewCard: View {
-    let review: Review
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(Theme.Palette.goldPastel)
-                        .frame(width: 38, height: 38)
-                        .overlay(Circle().stroke(Theme.Palette.gold.opacity(0.25), lineWidth: 1))
-                    Text(review.initial)
-                        .font(AppFont.text(14, weight: .bold))
-                        .foregroundColor(Theme.Palette.gold)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(review.name)
-                        .font(AppFont.text(13, weight: .semibold))
-                    HStack(spacing: 6) {
-                        Text(review.date)
-                            .font(AppFont.text(11))
-                            .foregroundColor(Theme.Palette.inkMute)
-                        if review.verified {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(Theme.Palette.gold)
-                            Text("Verified")
-                                .font(AppFont.text(10, weight: .semibold))
-                                .tracking(0.4)
-                                .foregroundColor(Theme.Palette.inkSoft)
-                        }
-                    }
-                }
-                Spacer()
-                HStack(spacing: 2) {
-                    ForEach(0..<5, id: \.self) { i in
-                        Image(systemName: i < review.stars ? "star.fill" : "star")
-                            .font(.system(size: 11))
-                            .foregroundColor(i < review.stars
-                                ? Color(hex: 0xF5B700)
-                                : Theme.Palette.line)
-                    }
-                }
-            }
-            Text(review.body)
-                .font(AppFont.text(14))
-                .foregroundColor(Theme.Palette.ink)
-                .lineSpacing(2)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
-        .padding(.top, 8)
     }
 }

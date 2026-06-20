@@ -8,7 +8,7 @@ struct GoalsTab: View {
 
     var body: some View {
         ZStack {
-            Theme.Palette.bg.ignoresSafeArea()
+            Theme.pageBackground.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     header
@@ -74,7 +74,7 @@ struct GoalsTab: View {
                 .textCase(.uppercase)
                 .foregroundColor(Theme.Palette.inkSoft)
             EmphasizedHeadline(
-                raw: "Big <em>destinations.</em>",
+                raw: "Big <em>destinations</em>",
                 font: AppFont.display(36, weight: .bold),
                 emColor: Theme.Palette.gold
             )
@@ -96,85 +96,84 @@ struct GoalsTab: View {
         return "\(countWord) goal\(n == 1 ? "" : "s") in flight.\(nudge)"
     }
 
-    // MARK: - Tracker hero (gradient card, mirrors the You-tab streak)
+    // MARK: - Tracker hero (orange fire-gradient card, mirrors the streak modal
+    // hero so Goals reads in the same warm family)
+
+    /// The streak modal's fire gradient, reused so the Goals hero shares the
+    /// same warm orange treatment.
+    private let fire = [Color(hex: 0xFF5E3A), Color(hex: 0xFF823C), Color(hex: 0xFFB24D)]
 
     private var goalsTracker: some View {
         let active = container.activeGoals
         let saved = active.reduce(0) { $0 + $1.currentAmount }
         let target = active.reduce(0) { $0 + $1.targetAmount }
         let pct = target > 0 ? min(1, saved / target) : 0
-        let nearestDays = nearestDaysOut
+        let pctInt = Int((pct * 100).rounded())
 
-        return ZStack(alignment: .leading) {
-            ZStack {
-                LinearGradient(
-                    colors: [Color(hex: 0xFF5E3A), Color(hex: 0xFF823C), Color(hex: 0xFFB24D)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                RadialGradient(colors: [.white.opacity(0.30), .clear],
-                               center: .topTrailing, startRadius: 4, endRadius: 220)
-                RadialGradient(colors: [.black.opacity(0.10), .clear],
-                               center: .bottomLeading, startRadius: 4, endRadius: 200)
-            }
+        return ZStack {
+            LinearGradient(colors: fire, startPoint: .topLeading, endPoint: .bottomTrailing)
+            RadialGradient(colors: [.white.opacity(0.30), .clear],
+                           center: .topTrailing, startRadius: 4, endRadius: 320)
+            RadialGradient(colors: [.black.opacity(0.10), .clear],
+                           center: .bottomLeading, startRadius: 4, endRadius: 280)
+
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 14) {
+                HStack(spacing: 16) {
                     ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.20))
-                            .frame(width: 52, height: 52)
+                        Circle().fill(Color.white.opacity(0.22)).frame(width: 56, height: 56)
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 22, weight: .bold))
+                            .font(.system(size: 24, weight: .black))
                             .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                            .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(trackerHeadline(pct: pct, active: active.count))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(percentHeadline(pctInt: pctInt, active: active.count))
                             .font(AppFont.text(20, weight: .bold))
                             .foregroundColor(.white)
                         Text(trackerSubtitle(saved: saved, target: target,
-                                             active: active.count, nearestDays: nearestDays))
+                                             active: active.count, nearestDays: nearestDaysOut))
                             .font(AppFont.text(12, weight: .medium))
                             .foregroundColor(.white.opacity(0.92))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.20))
-                        Capsule()
-                            .fill(Color.white)
-                            .frame(width: proxy.size.width * pct)
-                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+
+                if target > 0 {
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.white.opacity(0.30))
+                            Capsule().fill(Color.white)
+                                .frame(width: proxy.size.width * CGFloat(pct))
+                                .animation(.spring(response: 0.8, dampingFraction: 0.85), value: pct)
+                        }
                     }
-                }
-                .frame(height: 6)
-                HStack {
-                    Text("\(Int(pct * 100))% funded")
-                        .font(AppFont.text(11, weight: .semibold))
-                        .tracking(0.6)
-                        .textCase(.uppercase)
-                        .foregroundColor(.white.opacity(0.92))
-                    Spacer()
-                    Text("\(Money.format(max(0, target - saved))) to go")
-                        .font(AppFont.text(11, weight: .semibold))
-                        .foregroundColor(.white)
+                    .frame(height: 8)
+
+                    HStack {
+                        Text("\(pctInt)% FUNDED")
+                            .font(AppFont.text(12, weight: .bold))
+                            .tracking(0.4)
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("\(Money.format(max(0, target - saved))) to go")
+                            .font(AppFont.text(12, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.95))
+                    }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
+            .padding(18)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(hex: 0xFF5E3A).opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: Color(hex: 0xFF5E3A).opacity(0.4), radius: 14, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        // Soft orange halo so the card glows warm, like the screenshot.
+        .shadow(color: Theme.Palette.streak.opacity(0.35), radius: 18, x: 0, y: 8)
+        .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
     }
 
-    private func trackerHeadline(pct: Double, active: Int) -> String {
+    private func percentHeadline(pctInt: Int, active: Int) -> String {
         if active == 0 { return "Pick a first goal" }
-        if pct >= 1 { return "Every goal funded" }
-        return "\(Int(pct * 100))% of the way there"
+        if pctInt >= 100 { return "Every goal funded" }
+        return "\(pctInt)% of the way there"
     }
 
     private func trackerSubtitle(saved: Double, target: Double, active: Int, nearestDays: Int?) -> String {
@@ -226,9 +225,8 @@ struct GoalsTab: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(Theme.Palette.inkMute)
             }
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+            .padding(16)
+            .softCard()
         }
         .buttonStyle(.plainTappable)
     }
@@ -299,8 +297,7 @@ private struct GoalTile: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard()
     }
 
     private var targetLabel: String {
