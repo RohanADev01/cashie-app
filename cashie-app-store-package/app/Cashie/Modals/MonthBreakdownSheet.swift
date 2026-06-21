@@ -12,36 +12,39 @@ struct MonthBreakdownSheet: View {
     @State private var showBudgets = false
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                summary
-                if rows.isEmpty && savingsRows.isEmpty {
-                    emptyState
-                } else {
-                    LazyVGrid(
-                        columns: [GridItem(.flexible(), spacing: 10),
-                                  GridItem(.flexible(), spacing: 10)],
-                        spacing: 10
-                    ) {
-                        ForEach(rows, id: \.category) { row in
-                            Button { selectedCategory = row.category } label: {
-                                CategoryBreakdownCard(row: row, monthTotal: monthTotal)
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    summary
+                    if rows.isEmpty && savingsRows.isEmpty {
+                        emptyState
+                    } else {
+                        LazyVGrid(
+                            columns: [GridItem(.flexible(), spacing: 12),
+                                      GridItem(.flexible(), spacing: 12)],
+                            spacing: 12
+                        ) {
+                            ForEach(rows, id: \.category) { row in
+                                Button { selectedCategory = row.category } label: {
+                                    CategoryBreakdownCard(row: row, monthTotal: monthTotal)
+                                }
+                                .buttonStyle(.plainTappable)
                             }
-                            .buttonStyle(.plainTappable)
-                        }
-                        ForEach(savingsRows, id: \.id) { row in
-                            Button { selectedGoalID = row.id } label: {
-                                SavingsBreakdownCard(row: row, monthTotal: monthTotal)
+                            ForEach(savingsRows, id: \.id) { row in
+                                Button { selectedGoalID = row.id } label: {
+                                    SavingsBreakdownCard(row: row, monthTotal: monthTotal)
+                                }
+                                .buttonStyle(.plainTappable)
                             }
-                            .buttonStyle(.plainTappable)
                         }
                     }
                 }
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
-            .padding(.bottom, 30)
         }
         .sheet(item: $selectedCategory) { cat in
             CategoryDetailSheet(category: cat)
@@ -165,9 +168,9 @@ struct MonthBreakdownSheet: View {
                 }
             }
             .padding(18)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            .softCard()
         }
         .buttonStyle(.plainTappable)
     }
@@ -183,8 +186,7 @@ struct MonthBreakdownSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard()
     }
 
     // MARK: - Derived
@@ -311,8 +313,7 @@ private struct CategoryBreakdownCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard(16)
     }
 
     private var sharePct: Int {
@@ -384,8 +385,7 @@ private struct SavingsBreakdownCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard(16)
     }
 
     private var sharePct: Int {

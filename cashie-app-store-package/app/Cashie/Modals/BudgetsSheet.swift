@@ -9,6 +9,13 @@ struct BudgetsSheet: View {
     /// by default until the row is tapped.
     @State private var expandedCategory: SpendCategory? = nil
 
+    /// Suggest-from-income accordion state. The income value isn't persisted —
+    /// it's a one-shot input that feeds the preview math and then drives the
+    /// per-category cap when "Apply" is tapped.
+    @State private var suggestExpanded: Bool = false
+    @State private var suggestIncome: Double = 0
+    @State private var confirmingSuggestApply: Bool = false
+
     private var editableCategories: [SpendCategory] {
         SpendCategory.allCases.filter { $0 != .income }
     }
@@ -20,6 +27,16 @@ struct BudgetsSheet: View {
                 VStack(alignment: .leading, spacing: 22) {
                     header
                     summary
+                    SuggestFromIncomeCard(
+                        income: $suggestIncome,
+                        isExpanded: suggestExpanded,
+                        perCategory: suggestedPerCategoryCap,
+                        savings: suggestedSavings,
+                        onToggle: {
+                            withAnimation(Theme.Motion.snap) { suggestExpanded.toggle() }
+                        },
+                        onApply: { confirmingSuggestApply = true }
+                    )
                     VStack(spacing: 12) {
                         ForEach(editableCategories) { cat in
                             BudgetRow(
@@ -41,6 +58,41 @@ struct BudgetsSheet: View {
                 .padding(.bottom, 30)
             }
         }
+        .confirmationDialog(
+            "Replace all category caps?",
+            isPresented: $confirmingSuggestApply,
+            titleVisibility: .visible
+        ) {
+            Button("Set every category to \(Money.format(suggestedPerCategoryCap))", role: .destructive) {
+                applySuggestion()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This overwrites any caps you've already set. \(Money.format(suggestedSavings)) is set aside for savings.")
+        }
+    }
+
+    /// 80% of the entered income split evenly across the 8 spendable categories.
+    /// Returns 0 until a real income is entered.
+    private var suggestedPerCategoryCap: Double {
+        guard suggestIncome > 0, !editableCategories.isEmpty else { return 0 }
+        return (suggestIncome * 0.8) / Double(editableCategories.count)
+    }
+
+    /// 20% set aside for savings, shown alongside the per-category figure so
+    /// the user can see where the rest of the income goes. Not a category —
+    /// it's just headroom for goals.
+    private var suggestedSavings: Double {
+        guard suggestIncome > 0 else { return 0 }
+        return suggestIncome * 0.2
+    }
+
+    private func applySuggestion() {
+        let cap = suggestedPerCategoryCap
+        for cat in editableCategories {
+            container.setBudget(category: cat, cap: cap)
+        }
+        withAnimation(Theme.Motion.snap) { suggestExpanded = false }
     }
 
     private var header: some View {
@@ -115,6 +167,163 @@ struct BudgetsSheet: View {
             get: { cap(for: category) },
             set: { container.setBudget(category: category, cap: $0) }
         )
+    }
+}
+
+/// Optional helper sitting above the per-category list: type your monthly
+/// income, see what an even split would look like, tap Apply to overwrite
+/// every category cap in one shot. Designed so a fresh-install user with no
+/// idea what to type gets a sensible baseline they can then tune.
+private struct SuggestFromIncomeCard: View {
+    @Binding var income: Double
+    let isExpanded: Bool
+    let perCategory: Double
+    let savings: Double
+    let onToggle: () -> Void
+    let onApply: () -> Void
+
+    private var canApply: Bool { income > 0 && perCategory > 0 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Button(action: onToggle) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Theme.Palette.gold)
+                            .shadow(color: Theme.Palette.gold.opacity(0.35), radius: 6, x: 0, y: 3)
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 38, height: 38)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Suggest from income")
+                            .font(AppFont.text(15, weight: .semibold))
+                            .foregroundColor(Theme.Palette.ink)
+                        Text("80% across categories · 20% savings")
+                            .font(AppFont.text(11))
+                            .foregroundColor(Theme.Palette.inkSoft)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Theme.Palette.inkMute)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plainTappable)
+
+            if isExpanded {
+                IncomeInputField(income: $income)
+                previewBreakdown
+                PrimaryButton(
+                    title: canApply ? "Apply to my budgets" : "Enter your income",
+                    trailingArrow: false,
+                    background: Theme.Palette.gold,
+                    isEnabled: canApply,
+                    action: onApply
+                )
+            }
+        }
+        .padding(14)
+        .softCard()
+    }
+
+    private var previewBreakdown: some View {
+        VStack(spacing: 8) {
+            previewRow(
+                label: "Each category",
+                value: canApply ? Money.format(perCategory) : "—",
+                accent: Theme.Palette.ink
+            )
+            Divider().background(Theme.Palette.lineSoft)
+            previewRow(
+                label: "Set aside for savings",
+                value: canApply ? Money.format(savings) : "—",
+                accent: Theme.Palette.gold
+            )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
+    }
+
+    private func previewRow(label: String, value: String, accent: Color) -> some View {
+        HStack {
+            Text(label)
+                .font(AppFont.text(13))
+                .foregroundColor(Theme.Palette.inkSoft)
+            Spacer()
+            Text(value)
+                .font(AppFont.text(15, weight: .bold))
+                .foregroundColor(accent)
+                .monospacedDigit()
+        }
+    }
+}
+
+/// Clone of `CapInputField` for a monthly-income figure. Same look, but binds
+/// to a separate state and clamps to $1M so a stray keypad mash can't
+/// suggest a $999,999 / category budget.
+private struct IncomeInputField: View {
+    @Binding var income: Double
+
+    @State private var draft: String = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(Money.symbol)
+                .font(AppFont.display(24, weight: .bold))
+                .foregroundColor(Theme.Palette.inkSoft)
+            TextField("0", text: $draft)
+                .font(AppFont.display(28, weight: .heavy))
+                .foregroundColor(Theme.Palette.ink)
+                .monospacedDigit()
+                .keyboardType(.decimalPad)
+                .focused($focused)
+                .onChange(of: draft) { newValue in
+                    let parsed = Money.parseAmount(newValue) ?? 0
+                    income = min(1_000_000, max(0, parsed))
+                }
+            Text("/ month")
+                .font(AppFont.text(13))
+                .foregroundColor(Theme.Palette.inkSoft)
+            Spacer(minLength: 0)
+            if income > 0 {
+                Button {
+                    draft = ""
+                    income = 0
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Theme.Palette.inkMute)
+                }
+                .buttonStyle(.plainTappable)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.Palette.bgCream))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(focused ? Theme.Palette.gold : Theme.Palette.line,
+                        lineWidth: focused ? 2 : 1)
+        )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focused = false }
+                    .font(AppFont.text(15, weight: .semibold))
+                    .foregroundColor(Theme.Palette.gold)
+            }
+        }
+        .onAppear {
+            draft = income > 0 ? Money.plainString(income) : ""
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { focused = true }
+        }
     }
 }
 

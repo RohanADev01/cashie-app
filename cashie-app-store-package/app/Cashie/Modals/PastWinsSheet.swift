@@ -10,26 +10,29 @@ struct PastWinsSheet: View {
     @State private var detailGoal: Goal?
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                summary
-                if container.pastWins.isEmpty {
-                    emptyState
-                } else {
-                    VStack(spacing: 10) {
-                        ForEach(container.pastWins) { g in
-                            Button { detailGoal = g } label: {
-                                row(for: g)
+        ZStack {
+            Theme.pageBackground.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    header
+                    summary
+                    if container.pastWins.isEmpty {
+                        emptyState
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(container.pastWins) { g in
+                                Button { detailGoal = g } label: {
+                                    row(for: g)
+                                }
+                                .buttonStyle(.plainTappable)
                             }
-                            .buttonStyle(.plainTappable)
                         }
                     }
                 }
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
-            .padding(.bottom, 30)
         }
         .sheet(item: $detailGoal) { g in
             GoalDetailSheet(goal: g)
@@ -82,9 +85,9 @@ struct PastWinsSheet: View {
             }
             Spacer()
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard()
     }
 
     private var emptyState: some View {
@@ -98,8 +101,7 @@ struct PastWinsSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .softCard()
     }
 
     private func row(for goal: Goal) -> some View {
@@ -136,9 +138,9 @@ struct PastWinsSheet: View {
             }
             .buttonStyle(.plainTappable)
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .softCard(16)
     }
 
     private func metaLabel(for goal: Goal) -> String {
