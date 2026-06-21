@@ -394,12 +394,18 @@ actor SyncEngine: SupabaseService {
         guard let remote, !remoteDisabled else { return }   // offline / not configured
 
         // Record durably so the write survives an app kill mid-sync.
-        enqueue(PendingOp(kind: kind, payload: payload, dedupeKey: dedupe))
+        let op = PendingOp(kind: kind, payload: payload, dedupeKey: dedupe)
+        enqueue(op)
         await publishPending()
 
         do {
             try await withTimeoutPush { try await send(remote) }
-            dropMatching(kind: kind, dedupe: dedupe)
+            // Drop by id, NOT by kind. Dropping by kind takes outbox[firstIndex
+            // where kind matches], which after a prior failure can be a DIFFERENT
+            // op (e.g. an earlier addTransaction that failed offline). The later
+            // push succeeding would then silently delete the earlier op from the
+            // outbox, losing that write on the next pull/replace.
+            dropOp(id: op.id)
             await publishPending()
             await flush()   // opportunistically drain anything else queued
         } catch {
@@ -416,12 +422,8 @@ actor SyncEngine: SupabaseService {
         persistOutbox()
     }
 
-    private func dropMatching(kind: PendingOp.Kind, dedupe: String?) {
-        if let dedupe {
-            outbox.removeAll { $0.dedupeKey == dedupe }
-        } else if let idx = outbox.firstIndex(where: { $0.kind == kind }) {
-            outbox.remove(at: idx)
-        }
+    private func dropOp(id: UUID) {
+        outbox.removeAll { $0.id == id }
         persistOutbox()
     }
 
@@ -458,7 +460,7 @@ actor SyncEngine: SupabaseService {
     /// don't spin against a dead endpoint; the next launch/foreground retries.
     ///
     /// IMPORTANT: actor methods may suspend at `await` points, during which
-    /// another actor-isolated call (e.g. `track`'s `dropMatching`) can mutate
+    /// another actor-isolated call (e.g. `track`'s `dropOp`) can mutate
     /// `outbox`. So we must NOT assume the op at index 0 after we resume is the
     /// same one we picked up. Removing by id (and tolerating "already gone")
     /// prevents the `removeFirst()` empty-collection trap that crashed TestFlight
@@ -987,6 +989,34 @@ private struct GoalRow: Codable {
         target_date = PG.dateOnly.string(from: g.targetDate)
         archived_at = g.archivedAt
         deposits = nil   // deposits are written to their own table
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, user_id, emoji, name, target_amount, current_amount
+        case target_date, archived_at, deposits
+    }
+
+    /// Custom encoder so `archived_at = nil` is written as JSON `null` rather
+    /// than omitted. Swift's synthesised `Encodable` uses `encodeIfPresent` for
+    /// optionals, which made the PostgREST upsert (`resolution=merge-duplicates`)
+    /// silently keep the previous `archived_at` value — so restoring a goal from
+    /// Past wins set `archivedAt = nil` locally, but the round-trip pull put it
+    /// straight back into Past wins.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(user_id, forKey: .user_id)
+        try c.encode(emoji, forKey: .emoji)
+        try c.encode(name, forKey: .name)
+        try c.encode(target_amount, forKey: .target_amount)
+        try c.encode(current_amount, forKey: .current_amount)
+        try c.encode(target_date, forKey: .target_date)
+        if let archived_at {
+            try c.encode(archived_at, forKey: .archived_at)
+        } else {
+            try c.encodeNil(forKey: .archived_at)
+        }
+        try c.encodeIfPresent(deposits, forKey: .deposits)
     }
 
     func toModel() -> Goal {
