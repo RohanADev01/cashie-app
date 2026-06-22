@@ -12,7 +12,11 @@ struct CashieApp: App {
         // first-run empty states. Must run before AppContainer is built, since
         // the store service reads its seed in its initializer. Compiled out of
         // release builds.
-        if ProcessInfo.processInfo.arguments.contains("-emptyStore") {
+        // -seedDemo also starts from a clean store so DemoSeed (applied after
+        // bootstrap, below) populates a fresh account every launch rather than
+        // stacking duplicates on top of the last run.
+        if ProcessInfo.processInfo.arguments.contains("-emptyStore")
+            || ProcessInfo.processInfo.arguments.contains("-seedDemo") {
             LocalStore.shared.wipe()
             LocalStore.shared.save([Transaction](), key: LocalStore.Key.transactions)
             LocalStore.shared.save([Goal](), key: LocalStore.Key.goals)
@@ -89,6 +93,12 @@ struct CashieApp: App {
                 }
                 .task {
                     await container.bootstrap()
+                    #if DEBUG
+                    // Populate the demo fixture once the (wiped) account has loaded.
+                    if ProcessInfo.processInfo.arguments.contains("-seedDemo") {
+                        DemoSeed.apply(to: container)
+                    }
+                    #endif
                     privacyLock.attach(to: container)
                     await ReminderScheduler.sync(with: container.settings)
                     await ReminderScheduler.scheduleRateReminderIfNeeded()

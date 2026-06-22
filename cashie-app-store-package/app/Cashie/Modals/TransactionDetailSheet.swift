@@ -82,7 +82,7 @@ struct TransactionDetailSheet: View {
 
     private var detailRows: some View {
         VStack(spacing: 0) {
-            row("Logged via", live.source.rawValue.capitalized)
+            row("Logged via", live.source.label)
             // Only shown when a real note exists — most logs have none, so a
             // "Note · -" row was just empty noise.
             if let note = live.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {

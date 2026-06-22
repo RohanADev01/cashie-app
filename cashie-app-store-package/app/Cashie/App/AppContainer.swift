@@ -301,6 +301,23 @@ final class AppContainer: ObservableObject {
         evaluateAchievements()
     }
 
+    /// Post any recurring bills / income paydays whose date has already passed as
+    /// real transactions, rolling each forward one cycle per missed date. A bill
+    /// or payday only affects Safe to Spend once it actually happens; this is the
+    /// mechanism that turns a passed due date into a spend, and a passed payday
+    /// into received income. Idempotent (the stores roll the date forward), so
+    /// it's safe to call on launch and after a bill/income is added or edited.
+    func processDueRecurring(now: Date = Date()) {
+        for p in BillsStore.shared.collectDuePayments(now: now) {
+            addTransaction(Transaction(merchant: p.name, amount: p.amount, category: p.category,
+                                       date: p.date, note: "Recurring bill", source: .bill))
+        }
+        for p in IncomeStore.shared.collectDuePaydays(now: now) {
+            addTransaction(Transaction(merchant: p.name, amount: p.amount, category: .income,
+                                       date: p.date, note: "Recurring income", source: .income))
+        }
+    }
+
     func deleteTransaction(_ id: UUID) {
         transactions.removeAll { $0.id == id }
         Task { try? await supabase.deleteTransaction(id) }
@@ -569,17 +586,102 @@ final class AppContainer: ObservableObject {
             .reduce(0) { $0 + $1.amount }
     }
 
-    /// "Safe to spend" this month = total monthly caps minus this month's
-    /// non-income spend minus this month's goal deposits. The single source of
-    /// truth for the Today hero, the Wrapped net card and the You weekly card,
-    /// so those surfaces never disagree. Goes negative once over the cap.
-    var safeToSpend: Double {
+    // MARK: - Money on hand (rolls over) vs the monthly budget (resets)
+    //
+    // Two truths live here at once. Budgets are a monthly PLAN: every category cap
+    // resets on the 1st. Income is real MONEY: it does not reset, so pay that
+    // arrived last month and wasn't spent is still yours this month. Safe to Spend
+    // reconciles the two by taking the larger of them (see `spendableBase`), which
+    // is what lets income roll over without ever double-counting the budget.
+
+    /// Every dollar of income ever logged - recurring paydays and one-off income
+    /// alike, across all months. The basis for the running balance below.
+    private var incomeToDate: Double {
+        transactions
+            .filter { $0.category == .income }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Every dollar of non-income spend ever logged, across all months.
+    private var spendToDate: Double {
+        transactions
+            .filter { $0.category != .income }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Every dollar ever moved into a goal, across all months.
+    private var depositsToDate: Double {
+        goals.flatMap(\.deposits).reduce(0) { $0 + $1.amount }
+    }
+
+    /// Non-income spend in the current calendar month.
+    var monthSpendTotal: Double {
         let cal = Calendar.current
-        let monthSpend = transactions
+        return transactions
             .filter { $0.category != .income && cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
             .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Real money still on hand: everything earned minus everything spent or saved
+    /// into goals, across the app's whole history. Budgets reset on the 1st but
+    /// this does NOT - money that arrived last month and wasn't spent is still
+    /// counted, so it never looks like it vanished overnight when the month turns
+    /// over. Starts from $0 when the user begins using Cashie (we don't ask for a
+    /// bank balance), so it only ever reflects money Cashie actually watched arrive.
+    var runningBalance: Double {
+        incomeToDate - spendToDate - depositsToDate
+    }
+
+    /// The month's spendable ceiling: the LARGER of the real money available this
+    /// month and the monthly budget plan.
+    ///
+    /// - "Available this month" = last month's leftover that rolled over, plus any
+    ///   income received this month. (It's the running balance with this month's
+    ///   own spend and deposits added back, since `safeToSpend` subtracts those
+    ///   again - so spending this month lowers Safe to Spend, not the ceiling.)
+    /// - "Budget plan" = the sum of every category cap, which resets each month.
+    ///
+    /// Taking the larger means: with no income you simply get your budget, so
+    /// budget-only users are unchanged; once real money on hand passes the budget,
+    /// Safe to Spend rises to match it (income lets you spend more, and unspent
+    /// income carries into next month instead of disappearing). It also avoids the
+    /// "Suggest from income" double count - the pay the caps were derived from is
+    /// compared against those caps, never summed with them.
+    var spendableBase: Double {
         let monthCap = budgets.reduce(0) { $0 + $1.monthlyCap }
-        return monthCap - monthSpend - monthDepositsTotal
+        let availableThisMonth = runningBalance + monthSpendTotal + monthDepositsTotal
+        return max(availableThisMonth, monthCap)
+    }
+
+    /// "Safe to spend" this month = the spendable ceiling minus this month's
+    /// non-income spend and goal deposits. The single source of truth for the
+    /// Today hero, the Wrapped net card and the You weekly card, so those surfaces
+    /// never disagree. Goes negative once spending passes the ceiling.
+    ///
+    /// Recurring bills/income only move this once they actually happen: a bill
+    /// posts to the spend tab when its due date passes (landing in the spend), and
+    /// pay posts as income when payday passes (landing in the balance). Nothing is
+    /// reserved or counted before its date (see `processDueRecurring`).
+    var safeToSpend: Double {
+        spendableBase - monthSpendTotal - monthDepositsTotal
+    }
+
+    /// Fraction of this month's spendable ceiling already used (spend + deposits).
+    /// Drives the Today pace ring and shares `spendableBase` with `safeToSpend`, so
+    /// the ring and the headline can never disagree.
+    var monthBudgetRatio: Double {
+        guard spendableBase > 0 else { return 0 }
+        return (monthSpendTotal + monthDepositsTotal) / spendableBase
+    }
+
+    /// Money carried over from previous months that is lifting Safe to Spend above
+    /// this month's budget (0 when the budget itself is the ceiling). Lets a
+    /// surface show a short "includes $X from last month" note so a figure above
+    /// the budget never reads as a glitch.
+    var carryoverAboveBudget: Double {
+        let monthCap = budgets.reduce(0) { $0 + $1.monthlyCap }
+        let availableThisMonth = runningBalance + monthSpendTotal + monthDepositsTotal
+        return max(0, availableThisMonth - monthCap)
     }
 
     /// Total deposits made this month into a single goal. Powers the

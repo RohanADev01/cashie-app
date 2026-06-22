@@ -68,6 +68,9 @@ struct MainTabsView: View {
         }
         .onAppear {
             container.mainTab = MainTabsView.initialTab
+            // Post any recurring bills/income whose date passed while the app was
+            // away, so Safe to Spend reflects what has actually happened.
+            container.processDueRecurring()
             // Catch achievements that grew with time while the app was away
             // (months-active loyalty, a streak day rolling over) with no data
             // mutation to trigger detection.

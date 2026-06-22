@@ -88,7 +88,7 @@ struct PaceRingCard: View {
         guard hasCap, dailyAllowance > 0 else {
             return "Set a monthly cap to see your daily pace."
         }
-        return "\(Money.symbol)\(Int(dailyAllowance.rounded()))/day · \(daysLeft) \(daysLeft == 1 ? "day" : "days") left"
+        return "\(Money.symbol)\(Int(dailyAllowance.rounded()))/day this month · \(daysLeft) \(daysLeft == 1 ? "day" : "days") left"
     }
 }
 

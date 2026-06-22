@@ -13,6 +13,8 @@ struct YouTab: View {
     @State private var showHelp = false
     @State private var showStreak = false
     @State private var showCurrency = false
+    @State private var showBills = false
+    @State private var showIncome = false
 
     var body: some View {
         ZStack {
@@ -58,6 +60,16 @@ struct YouTab: View {
         .sheet(isPresented: $showReminders) {
             ReminderSheet()
                 .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showBills) {
+            BillsListSheet()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showIncome) {
+            IncomeSheet()
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showPrivacy) {
@@ -368,6 +380,12 @@ struct YouTab: View {
                     : "Set up Quick Log",
                 accent: Theme.Palette.gold,
                 action: { showQuickLogSetup = true })
+            row(systemImage: "doc.text",                  // NEW
+                label: "Bills",
+                action: { showBills = true })
+            row(systemImage: "banknote",                  // NEW
+                label: "Income",
+                action: { showIncome = true })
             row(systemImage: "bell", label: "Notifications",
                 action: { showReminders = true })
             row(systemImage: "dollarsign.circle",

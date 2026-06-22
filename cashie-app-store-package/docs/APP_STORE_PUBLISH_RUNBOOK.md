@@ -44,7 +44,7 @@ empty. If you want accounts in v1.0, section 9 is the gating code work.
 
 ## 1. Verified project facts
 
-- Min iOS: **16.0**  ·  Version: **1.2**  ·  Build: **4**  ·  App category: **Finance** (`LSApplicationCategoryType = public.app-category.finance`; secondary **Lifestyle** is App Store Connect only)  ·  SwiftUI, portrait only, **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`)
+- Min iOS: **16.0**  ·  Version: **1.3**  ·  Build: **14**  ·  App category: **Finance** (`LSApplicationCategoryType = public.app-category.finance`; secondary **Lifestyle** is App Store Connect only)  ·  SwiftUI, portrait only, **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`)
 - **Build with Xcode 26+ (iOS 26 SDK or later).** Apple rejects uploads built with an older SDK at validation - an iOS 17.5-SDK build fails. Update Xcode before you Archive.
 - Signing: `CODE_SIGN_STYLE = Automatic`, **`DEVELOPMENT_TEAM` is not set** (you set it on your Mac)
 - **No SPM dependencies** - subscriptions are native StoreKit 2 (RevenueCat removed)

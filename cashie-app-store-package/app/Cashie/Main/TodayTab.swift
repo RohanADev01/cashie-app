@@ -21,6 +21,7 @@ struct TodayTab: View {
                     topbar
                     paceRingHero
                     RankHeroCard(progress: container.rankProgress) { showRanks = true }
+                    BillsIncomeCard()           // NEW — bills + income in one compact card
                     whereItWentSection
                     if container.transactions.isEmpty {
                         AddLogNudge(message: "Log your first spend to bring this to life")
@@ -140,7 +141,7 @@ struct TodayTab: View {
                 safeToSpendWhole: amountWhole,
                 safeToSpendCents: amountCents,
                 negative: safeToSpendNegative,
-                monthRatio: monthBudgetRatio,
+                monthRatio: container.monthBudgetRatio,
                 hasCap: monthHasCap,
                 dailyAllowance: container.dailyBudgetAllowance,
                 daysLeft: container.daysLeftInMonth
@@ -151,19 +152,6 @@ struct TodayTab: View {
 
     private var monthHasCap: Bool {
         container.budgets.reduce(0) { $0 + $1.monthlyCap } > 0
-    }
-
-    /// Fraction of the monthly cap consumed: this month's expenses plus goal
-    /// deposits over the total cap. Mirrors `safeToSpendValue`, which is the
-    /// remaining headroom from the same inputs.
-    private var monthBudgetRatio: Double {
-        let cal = Calendar.current
-        let spend = container.transactions
-            .filter { $0.category != .income && cal.isDate($0.date, equalTo: Date(), toGranularity: .month) }
-            .reduce(0) { $0 + $1.amount }
-        let cap = container.budgets.reduce(0) { $0 + $1.monthlyCap }
-        guard cap > 0 else { return 0 }
-        return (spend + container.monthDepositsTotal) / cap
     }
 
     // MARK: - Where it went (this month, real top categories, tappable header)

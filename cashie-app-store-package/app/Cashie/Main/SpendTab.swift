@@ -8,6 +8,7 @@ struct SpendTab: View {
     @State private var selectedGoal: Goal?
     @State private var showBudgets = false
     @State private var showQuickLogSetup = false
+    @State private var searchText: String = ""
 
     var body: some View {
         ZStack {
@@ -16,6 +17,7 @@ struct SpendTab: View {
                 VStack(alignment: .leading, spacing: 18) {
                     heroHeader
                     summaryCard
+                    searchField                     // NEW
                     transactionsList
                 }
                 .padding(.horizontal, 22)
@@ -401,11 +403,56 @@ struct SpendTab: View {
         return values
     }
 
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Theme.Palette.inkSoft)
+            TextField("Search transactions", text: $searchText)
+                .font(AppFont.text(14))
+                .foregroundColor(Theme.Palette.ink)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(Theme.Palette.inkMute)
+                }
+                .buttonStyle(.plainTappable)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
+    }
+
+    /// True when an item matches the current search (merchant, category, note,
+    /// or amount). Empty query matches everything. Applied to the flat item
+    /// list before grouping so the date headers and empty state stay correct.
+    private func matches(_ item: SpendItem) -> Bool {
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return true }
+        switch item {
+        case .tx(let tx):
+            if tx.merchant.lowercased().contains(q) { return true }
+            if tx.category.label.lowercased().contains(q) { return true }
+            if (tx.note ?? "").lowercased().contains(q) { return true }
+            if let parsed = Double(q), abs(tx.amount - parsed) < 0.005 { return true }
+            return false
+        case .deposit(let goal, _):
+            return goal.name.lowercased().contains(q)
+        }
+    }
+
     private var grouped: [(day: String, total: Double, items: [SpendItem])] {
         let cal = Calendar.current
         let dayMonth = DateFormatter(); dayMonth.dateFormat = "EEE d MMM"
         let bucket = DateFormatter(); bucket.dateFormat = "yyyy-MM-dd"
-        let bucketed = Dictionary(grouping: periodItems) {
+        let bucketed = Dictionary(grouping: periodItems.filter { matches($0) }) {
             bucket.string(from: $0.date)
         }
         return bucketed.keys.sorted(by: >).map { key in
@@ -441,9 +488,22 @@ struct TransactionRow: View {
             }
             .frame(width: 38, height: 38)
             VStack(alignment: .leading, spacing: 2) {
-                Text(tx.merchant)
-                    .font(AppFont.text(15, weight: .medium))
-                    .foregroundColor(Theme.Palette.ink)
+                HStack(spacing: 6) {
+                    Text(tx.merchant)
+                        .font(AppFont.text(15, weight: .medium))
+                        .foregroundColor(Theme.Palette.ink)
+                        .lineLimit(1)
+                    if tx.source == .bill || tx.source == .income {
+                        Text("Recurring")
+                            .font(AppFont.text(9, weight: .bold))
+                            .tracking(0.4)
+                            .textCase(.uppercase)
+                            .foregroundColor(Theme.Palette.gold)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Theme.Palette.goldPastel))
+                    }
+                }
                 Text(subtitle)
                     .font(AppFont.text(11))
                     .foregroundColor(Theme.Palette.inkSoft)

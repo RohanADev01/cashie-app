@@ -30,18 +30,18 @@ struct PermissionsScreen: View {
                 BackBar(onBack: { container.advanceOnboarding(to: .welcomeIn) },
                         pageLabel: "Setup · 01 / 03")
 
-                Text("Optional extras")
+                Text("Stay on track")
                     .font(AppFont.text(11, weight: .semibold))
                     .tracking(2)
                     .textCase(.uppercase)
                     .foregroundColor(Theme.Palette.inkSoft)
 
                 EmphasizedHeadline(
-                    raw: "Want <em>any of these?</em>",
+                    raw: "Stay <em>ahead of your money</em>",
                     font: AppFont.display(34, weight: .bold)
                 )
 
-                Text("Turn on what helps. You can change it later in Settings → You.")
+                Text("A heads up before bills hit, budgets run low, or payday lands")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
                     .padding(.top, 4)
@@ -49,7 +49,7 @@ struct PermissionsScreen: View {
                 VStack(spacing: 10) {
                     PermissionRow(emoji: "🔔",
                                   title: "Notifications",
-                                  desc: "Goal wins, weekly Wrapped, gentle nudges only.",
+                                  desc: "Bill reminders, budget alerts, payday and goal wins",
                                   isOn: notificationsOn)
                 }
                 .padding(.top, 18)

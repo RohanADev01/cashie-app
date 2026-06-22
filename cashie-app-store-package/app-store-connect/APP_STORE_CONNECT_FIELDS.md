@@ -116,11 +116,15 @@ Privacy Policy: https://cashie.space/privacy
 budget,expense tracker,spending,savings,money manager,budgeting,save money,daily budget,finance,goal
 ```
 
-### What's New (release notes for 1.2)
+### What's New (release notes for 1.3)
 ```
-More polish all around. Your saving goals now show right inside "Where it went" on the home screen, budgets shade from green to amber as you near a cap, and the goal and spend views got cleaner and more consistent. Logging with a tap is quicker to reach too.
+You can now add your income and recurring bills. Safe to Spend plans around them, counts your pay once it lands, and carries over what you don't spend into the next month. We also added search to your spending list and fixed a few things.
 ```
 
+> DRAFT copy for 1.3 - confirm/edit before submitting (plain, no em-dashes, no marketing fluff per the copy guidelines).
+>
+> Version 1.2 notes (for reference): "More polish all around. Your saving goals now show right inside "Where it went" on the home screen, budgets shade from green to amber as you near a cap, and the goal and spend views got cleaner and more consistent. Logging with a tap is quicker to reach too."
+>
 > Version 1.1 notes (for reference): "A fresh new look. We brightened up the whole app, added little touches of life and motion, refreshed onboarding, and polished a bunch of rough edges. Cleaner, lighter, and nicer to come back to every day."
 >
 > Version 1.0 notes (for reference): "The first version of Cashie. Know what's safe to spend, save for what matters, and log a spend in one tap. Welcome in."

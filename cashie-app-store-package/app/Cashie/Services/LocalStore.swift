@@ -66,6 +66,14 @@ final class LocalStore {
         }
     }
 
+    /// Delete the file backing a single key (used to clear an optional value such
+    /// as income, where saving an encoded `null` would otherwise linger).
+    func remove(key: String) {
+        queue.sync {
+            try? fm.removeItem(at: url(for: key))
+        }
+    }
+
     func wipe() {
         queue.sync {
             guard let entries = try? fm.contentsOfDirectory(atPath: baseURL.path) else { return }
@@ -84,6 +92,11 @@ extension LocalStore {
         static let notifications = "notifications"
         static let budgets = "budgets"
         static let settings = "settings"
+        /// Recurring bills (local-only, on-device). The transactions they auto-post
+        /// sync via the normal transaction path; the rule definitions stay local.
+        static let bills = "bills"
+        /// The user's single income (local-only, on-device). Same rationale as bills.
+        static let income = "income"
         static let seeded = "seededFlag"
         /// Durable queue of pending remote-sync operations (the offline outbox).
         static let outbox = "syncOutbox"
