@@ -15,11 +15,11 @@ struct BackTapTeaserScreen: View {
             Theme.Palette.bg.ignoresSafeArea()
 
             VStack(spacing: 14) {
-                BackBar(onBack: { container.advanceOnboarding(to: .backTapIntro) },
-                        pageLabel: "Setup · 03 / 03")
+                BackBar(onBack: { container.advanceOnboarding(to: .permissions) },
+                        pageLabel: "Setup · 02 / 03")
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("The 2-second log")
+                Text("Quick Log")
                     .font(AppFont.text(11, weight: .semibold))
                     .tracking(2)
                     .textCase(.uppercase)
@@ -27,12 +27,12 @@ struct BackTapTeaserScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 EmphasizedHeadline(
-                    raw: "Two ways to <em>log a spend.</em>",
+                    raw: "Set up <em>Quick Log</em>.",
                     font: AppFont.display(38, weight: .bold)
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text("Tap one to set it up. Each logs in seconds.")
+                Text("Pick how you'll log. About 20 seconds either way.")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)

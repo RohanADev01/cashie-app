@@ -120,6 +120,7 @@ private extension SessionState {
         case "reveal": return .onboarding(.reveal)
         case "traits": return .onboarding(.traits)
         case "pain": return .onboarding(.pain)
+        case "quickLog": return .onboarding(.quickLogIntro)
         case "effort": return .onboarding(.effort)
         case "social": return .onboarding(.socialProof)
         case "reviews": return .onboarding(.reviews)

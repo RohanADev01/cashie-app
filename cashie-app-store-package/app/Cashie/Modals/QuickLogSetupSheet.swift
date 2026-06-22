@@ -1,15 +1,17 @@
 import SwiftUI
 
 /// Sheet-presented Quick Log setup. Walks the user from the pitch into picking a
-/// trigger (Back Tap, Action Button, Siri, or an NFC tag) and assigning Cashie's
-/// shortcut to it. The shortcuts themselves are published automatically by
-/// `CashieShortcuts` (App Intents), so there's nothing to import; this screen is
-/// pure guidance. Opened from the You tab or onboarding.
+/// trigger (Back Tap or Action Button) and mapping Cashie's shortcut to it. The
+/// setup step is a single vertical how-to (`QuickLogVerticalGuide`). Opened from
+/// the You tab or onboarding.
 struct QuickLogSetupSheet: View {
     @EnvironmentObject var container: AppContainer
     @Environment(\.dismiss) var dismiss
     @State private var step: Step = .teaser
     @State private var trigger: Trigger = .backTap
+
+    @State private var showCopyToast = false
+    @State private var copyToken = 0
 
     enum Step { case teaser, setup, done }
 
@@ -32,6 +34,7 @@ struct QuickLogSetupSheet: View {
             .padding(.horizontal, 26)
             .padding(.bottom, 28)
         }
+        .overlay(alignment: .top) { TopCopyToast(visible: showCopyToast) }
     }
 
     private var header: some View {
@@ -62,6 +65,16 @@ struct QuickLogSetupSheet: View {
         case .teaser: dismiss()
         case .setup: step = .teaser
         case .done: dismiss()
+        }
+    }
+
+    private func flashCopied() {
+        copyToken += 1
+        let token = copyToken
+        showCopyToast = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            guard token == copyToken else { return }
+            showCopyToast = false
         }
     }
 
@@ -104,8 +117,8 @@ struct QuickLogSetupSheet: View {
         }
     }
 
-    /// Tappable "method" card on the teaser. Picking one jumps to the key step,
-    /// then lands on that trigger's instructions preselected.
+    /// Tappable "method" card on the teaser. Picking one jumps to the setup
+    /// step, preselected to that trigger.
     private func methodCard(_ t: Trigger) -> some View {
         Button(action: { trigger = t; step = .setup }) {
             HStack(spacing: 14) {
@@ -134,56 +147,40 @@ struct QuickLogSetupSheet: View {
         .buttonStyle(.plainTappable)
     }
 
-    // MARK: - Step 2, API key + import
+    // MARK: - Step 2, the vertical guide
 
-    // MARK: - Step 2, single combined setup page (matches onboarding)
-
-    /// Everything for the chosen trigger on one page: the numbered 1–4 steps,
-    /// then the visual guide (swipe for Back Tap, screenshot for Action Button),
-    /// then the API key + import controls. A switch link swaps triggers inline,
-    /// so there's no separate redundant "pick a trigger" step.
+    /// The whole how-to for the chosen trigger on one page (copy key → add
+    /// shortcut → open Settings → map it), with the actions pinned in a footer.
     private var setupView: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Set it up")
-                    .font(AppFont.text(11, weight: .semibold))
-                    .tracking(2)
-                    .textCase(.uppercase)
-                    .foregroundColor(Theme.Palette.inkSoft)
-
-                EmphasizedHeadline(raw: trigger.headline, font: AppFont.display(30, weight: .bold))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                // a) the numbered 1–4 steps
-                QuickLogStepsCard(assignStep: trigger.assignStep)
-
-                // b) the visual guide
-                if trigger == .backTap {
-                    Text("Watch how")
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Set it up")
                         .font(AppFont.text(11, weight: .semibold))
                         .tracking(2)
                         .textCase(.uppercase)
                         .foregroundColor(Theme.Palette.inkSoft)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    SetupWalkthrough.backTap
-                } else if trigger == .actionButton {
-                    SettingsScreenshotCard(
-                        imageName: "ActionButtonGuide",
-                        caption: "Set the Action Button to 'Cashie Quick Log'.",
-                        maxHeight: 300
+
+                    EmphasizedHeadline(raw: trigger.headline, font: AppFont.display(30, weight: .bold))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    QuickLogVerticalGuide(
+                        trigger: trigger == .actionButton ? .actionButton : .backTap,
+                        onCopied: { flashCopied() }
                     )
+                    .padding(.top, 2)
                 }
+                .padding(.top, 2)
+                .padding(.bottom, 16)
+            }
 
-                // c) the API key + copy + import controls (steps shown above)
-                QuickLogKeyCard(importShortcutURL: trigger.importURL,
-                                assignStep: trigger.assignStep,
-                                showSteps: false)
-
-                triggerActions
+            VStack(spacing: 10) {
+                PrimaryButton(title: "I've set it up", trailingArrow: false, background: Theme.Palette.gold) {
+                    step = .done
+                }
                 switchLink
             }
-            .padding(.top, 2)
-            .padding(.bottom, 8)
+            .padding(.top, 10)
         }
     }
 
@@ -198,20 +195,6 @@ struct QuickLogSetupSheet: View {
             .font(AppFont.text(12, weight: .medium))
             .foregroundColor(Theme.Palette.gold)
             .frame(maxWidth: .infinity)
-            .padding(.top, 6)
-    }
-
-    @ViewBuilder
-    private var triggerActions: some View {
-        if let url = trigger.actionURL {
-            PrimaryButton(title: trigger.actionLabel,
-                          systemImage: trigger.actionIcon,
-                          trailingArrow: false,
-                          background: Theme.Palette.gold) {
-                UIApplication.shared.open(url)
-            }
-        }
-        GhostButton(title: "I've set it up") { step = .done }
     }
 
     // MARK: - Step 3, Done
@@ -252,33 +235,9 @@ private extension QuickLogSetupSheet {
         case backTap, actionButton, applePay
         var id: String { rawValue }
 
-        /// Apple Pay is temporarily hidden from the picker. The case (and all its
-        /// copy/steps below) is kept intact, so re-enabling it is just adding
-        /// `.applePay` back to this list.
+        /// Apple Pay is temporarily hidden from the picker. The case is kept so
+        /// re-enabling it is just adding `.applePay` back to this list.
         static var allCases: [Trigger] { [.backTap, .actionButton] }
-
-        /// The name of the shortcut the user imports for this trigger. The
-        /// tap-based triggers share one shortcut; Apple Pay uses its own.
-        var shortcutName: String {
-            self == .applePay ? "Cashie Apple Pay Log" : "Cashie Quick Log"
-        }
-
-        /// The iCloud import link for this trigger's shortcut. Two workflows,
-        /// two links (see `Config`).
-        var importURL: URL? {
-            URL(string: self == .applePay
-                ? Config.applePayShortcutImportURL
-                : Config.quickLogShortcutImportURL)
-        }
-
-        /// The key card's final "assign" how-to line for this trigger.
-        var assignStep: String {
-            switch self {
-            case .backTap: return "Assign the shortcut to Back Tap (triple tap)."
-            case .actionButton: return "Assign the shortcut to the Action Button."
-            case .applePay: return "In your Wallet automation, choose 'Cashie Apple Pay Log' to run."
-            }
-        }
 
         var chip: String {
             switch self {
@@ -310,63 +269,6 @@ private extension QuickLogSetupSheet {
             case .backTap: return "Map your <em>triple tap.</em>"
             case .actionButton: return "Map your <em>Action Button.</em>"
             case .applePay: return "Log <em>after Apple Pay.</em>"
-            }
-        }
-
-        var note: String? {
-            switch self {
-            case .applePay:
-                return "Apple Pay can't share the amount, so the shortcut asks you to confirm it. The first run needs confirmation; after that you can let it run on its own."
-            default:
-                return nil
-            }
-        }
-
-        /// (SF Symbol, title, body) per step. The icon is the small visual cue.
-        var steps: [(icon: String, title: String, body: String)] {
-            switch self {
-            case .backTap:
-                return [
-                    ("gearshape.fill", "Open Settings", "Go to Accessibility, then Touch, then Back Tap."),
-                    ("hand.tap.fill", "Tap Triple Tap", "Pick the triple-tap option."),
-                    ("checkmark.circle.fill", "Choose \(shortcutName)", "Select the shortcut you imported.")
-                ]
-            case .actionButton:
-                return [
-                    ("gearshape.fill", "Open Settings", "Find Action Button."),
-                    ("hand.draw.fill", "Swipe to Shortcut", "Pick the Shortcut option."),
-                    ("checkmark.circle.fill", "Choose \(shortcutName)", "Select the shortcut you imported.")
-                ]
-            case .applePay:
-                return [
-                    ("square.grid.2x2.fill", "Open Shortcuts", "Go to the Automation tab."),
-                    ("plus.circle.fill", "Create Personal Automation", "Tap +, then Create Personal Automation."),
-                    ("creditcard.fill", "Select Wallet", "Pick your card, then choose \(shortcutName) to run."),
-                    ("checkmark.seal.fill", "Run After Confirmation", "Leave this on for your first payment."),
-                    ("bolt.fill", "Then run immediately", "After the first payment, switch it on to fully automate.")
-                ]
-            }
-        }
-
-        var actionLabel: String {
-            switch self {
-            case .backTap, .actionButton: return "Open Settings"
-            case .applePay: return "Open Shortcuts"
-            }
-        }
-
-        var actionURL: URL? {
-            switch self {
-            case .backTap: return URL(string: "App-prefs:ACCESSIBILITY")
-            case .actionButton: return URL(string: "App-prefs:root=ACCESSIBILITY")
-            case .applePay: return URL(string: "shortcuts://")
-            }
-        }
-
-        var actionIcon: String {
-            switch self {
-            case .applePay: return "arrow.up.forward.app"
-            default: return "gearshape.fill"
             }
         }
     }

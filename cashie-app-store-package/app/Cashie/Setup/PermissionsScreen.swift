@@ -27,7 +27,7 @@ struct PermissionsScreen: View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 14) {
-                BackBar(onBack: { container.advanceOnboarding(to: .nameInput) },
+                BackBar(onBack: { container.advanceOnboarding(to: .welcomeIn) },
                         pageLabel: "Setup · 01 / 03")
 
                 Text("Optional extras")
@@ -69,7 +69,7 @@ struct PermissionsScreen: View {
                     // Privacy lock is always off in 1.2 (Face ID removed).
                     container.settings.privacyLockEnabled = false
                     container.user.hasFaceID = false
-                    container.advanceOnboarding(to: .backTapIntro)
+                    container.advanceOnboarding(to: .backTapTeaser)
                 }
             }
             .padding(.horizontal, 26)

@@ -14,7 +14,7 @@ struct ContrastScreen: View {
             Theme.Palette.bg.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    BackBar(onBack: { container.advanceOnboarding(to: .reviews) })
+                    BackBar(onBack: { container.advanceOnboarding(to: .socialProof) })
 
                     Text("Two ways this goes")
                         .font(AppFont.text(11, weight: .semibold))

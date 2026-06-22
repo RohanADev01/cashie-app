@@ -269,9 +269,13 @@ struct CurrencyPickerSheet: View {
 }
 
 /// Onboarding step: pick the display currency on its own screen near the end of
-/// setup, so every amount from there on shows correctly.
+/// setup, so every amount from there on shows correctly. This is the last
+/// onboarding step; on confirm we commit the chosen archetype/traits and drop
+/// the user straight into the main app (the old Ready screen was a redundant
+/// "you're done" beat between this and the home tab).
 struct CurrencyScreen: View {
     @EnvironmentObject var container: AppContainer
+    @EnvironmentObject var state: OnboardingState
 
     var body: some View {
         CurrencyPickerSheet(
@@ -279,7 +283,11 @@ struct CurrencyScreen: View {
             subtitle: "We'll show every amount in this. You can change it anytime in You.",
             cta: "That's my currency",
             initialCode: Currencies.detected().code,
-            onConfirm: { container.advanceOnboarding(to: .ready) },
+            onConfirm: {
+                container.user.archetype = state.selectedArchetype
+                container.user.traits = state.traits
+                container.goToMain()
+            },
             onBack: { container.advanceOnboarding(to: .backTapTeaser) }
         )
     }

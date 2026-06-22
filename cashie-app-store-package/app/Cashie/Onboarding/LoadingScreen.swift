@@ -7,9 +7,9 @@ struct LoadingScreen: View {
 
     private let steps = [
         "Reading your answers",
-        "Cross-referencing \(Archetype.totalPopulationLabel) profiles",
+        "Comparing the money types",
         "Identifying your money type",
-        "Drafting your action plan"
+        "Lining up your numbers"
     ]
 
     var body: some View {

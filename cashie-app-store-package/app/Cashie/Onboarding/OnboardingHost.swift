@@ -61,6 +61,7 @@ struct OnboardingHost: View {
         case .reveal: RevealScreen()
         case .traits: TraitsScreen()
         case .pain: PainScreen()
+        case .quickLogIntro: QuickLogIntroScreen()
         case .effort: EffortScreen()
         case .socialProof: SocialProofScreen()
         case .reviews: ReviewsScreen()
@@ -69,7 +70,7 @@ struct OnboardingHost: View {
         case .welcomeIn: WelcomeInScreen()
         case .nameInput: NameInputScreen()
         case .permissions: PermissionsScreen()
-        case .backTapIntro: BackTapIntroScreen()
+        case .backTapIntro: BackTapTeaserScreen()  // legacy step alias; intro screen retired
         case .backTapTeaser: BackTapTeaserScreen()
         case .backTapSetup: BackTapSetupScreen()
         case .actionButtonSetup: ActionButtonSetupScreen()

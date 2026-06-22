@@ -1,20 +1,19 @@
 import SwiftUI
 
+/// Merged "Future" screen: graph (top) + two-column WITHOUT/WITH comparison
+/// (bottom). Does the job of both the old SocialProof and Contrast screens in
+/// one pass, then sends the user straight to the paywall.
 struct SocialProofScreen: View {
     @EnvironmentObject var container: AppContainer
     @EnvironmentObject var state: OnboardingState
     @State private var chartProgress: CGFloat = 0
 
     var body: some View {
-        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .reviews) }
-    }
-
-    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    BackBar(onBack: { container.advanceOnboarding(to: .pain) })
+                    BackBar(onBack: { container.advanceOnboarding(to: .quickLogIntro) })
 
                     Text("12 months later")
                         .font(AppFont.text(11, weight: .semibold))
@@ -27,17 +26,17 @@ struct SocialProofScreen: View {
                         emColor: Theme.Palette.gold
                     )
                     .padding(.top, 4)
-                    Text("\(state.selectedArchetype.populationLabel) others like you tracked over a year. Same income. Different outcome.")
+                    Text("Small daily decisions compound faster than most people expect.")
                         .font(AppFont.callout)
                         .foregroundColor(Theme.Palette.inkSoft)
                         .padding(.top, 8)
 
                     chartCard.padding(.top, 22)
 
-                    Spacer(minLength: 28)
+                    comparisonBlock.padding(.top, 24)
 
                     PrimaryButton(title: "Show me the plan") {
-                        container.advanceOnboarding(to: .reviews)
+                        container.advanceOnboarding(to: .paywall)
                     }
                     .padding(.top, 28)
                 }
@@ -56,7 +55,7 @@ struct SocialProofScreen: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 16) {
                 LegendDot(color: Theme.Palette.gold, label: "With Cashie")
-                LegendDot(color: Theme.Palette.red, label: "Without")
+                LegendDot(color: Theme.Palette.red, label: "Without Cashie")
                 Spacer()
             }
             GrowthChart(progress: chartProgress)
@@ -71,9 +70,76 @@ struct SocialProofScreen: View {
             .foregroundColor(Theme.Palette.inkMute)
         }
     }
+
+    // MARK: - WITHOUT / WITH comparison
+
+    private var comparisonBlock: some View {
+        HStack(alignment: .top, spacing: 14) {
+            comparisonColumn(
+                heading: "Keep going the same way",
+                icon: "xmark.circle.fill",
+                iconColor: Theme.Palette.red,
+                lines: [
+                    "Payday disappears fast",
+                    "Balance checks feel stressful",
+                    "Unsure where the money went"
+                ]
+            )
+            comparisonColumn(
+                heading: "Start tracking",
+                icon: "checkmark.circle.fill",
+                iconColor: Theme.Palette.green,
+                lines: [
+                    "Know what's safe to spend",
+                    "Reach payday with money left",
+                    "See spending clearly"
+                ]
+            )
+        }
+    }
+
+    private func comparisonColumn(heading: String, icon: String,
+                                  iconColor: Color, lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(heading)
+                .font(AppFont.text(12, weight: .heavy))
+                .foregroundColor(Theme.Palette.ink)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
+            ForEach(lines, id: \.self) { line in
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundColor(iconColor)
+                        .padding(.top, 2)
+                    Text(line)
+                        .font(AppFont.text(13, weight: .medium))
+                        .foregroundColor(Theme.Palette.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 // MARK: - Chart pieces
+
+struct MascotLegend: View {
+    let label: String
+    var body: some View {
+        HStack(spacing: 6) {
+            Image("Mascot")
+                .resizable()
+                .renderingMode(.original)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+            Text(label)
+                .font(AppFont.text(11, weight: .semibold))
+                .foregroundColor(Theme.Palette.inkSoft)
+        }
+    }
+}
 
 struct LegendDot: View {
     let color: Color
@@ -88,16 +154,13 @@ struct LegendDot: View {
     }
 }
 
-/// Two natural-looking 12-month lines with a soft gradient fill underneath
-/// that wipes in left-to-right alongside the line draw.
 struct GrowthChart: View {
     let progress: CGFloat
 
-    // Normalised y per month (0 = top, 1 = bottom). Twelve points each.
-    private let redYs: [CGFloat]   = [0.10, 0.18, 0.12, 0.28, 0.22, 0.40,
-                                      0.34, 0.52, 0.46, 0.66, 0.78, 0.92]
-    private let greenYs: [CGFloat] = [0.92, 0.85, 0.90, 0.72, 0.78, 0.60,
-                                      0.64, 0.46, 0.50, 0.30, 0.22, 0.08]
+    private let redYs: [CGFloat]   = [0.10, 0.06, 0.20, 0.34, 0.50,
+                                      0.66, 0.58, 0.74, 0.66, 0.82, 0.74, 0.90]
+    private let greenYs: [CGFloat] = [0.92, 0.96, 0.82, 0.66, 0.50,
+                                      0.34, 0.42, 0.26, 0.34, 0.18, 0.26, 0.10]
 
     var body: some View {
         GeometryReader { proxy in
@@ -108,28 +171,29 @@ struct GrowthChart: View {
             let greenPts = points(for: greenYs, width: w, height: h, pad: pad)
 
             ZStack {
-                // Faint axis line through the middle
                 Path { p in
                     p.move(to: CGPoint(x: 0, y: h / 2))
                     p.addLine(to: CGPoint(x: w, y: h / 2))
                 }
                 .stroke(Theme.Palette.line, style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
 
-                // Red - line + soft fill
                 lineLayer(points: redPts, color: Theme.Palette.red,
                           width: w, height: h, progress: progress)
 
-                // Green - line + soft fill
                 lineLayer(points: greenPts, color: Theme.Palette.gold,
                           width: w, height: h, progress: progress)
 
-                // End dots fade in at the end of the draw
                 if progress > 0.95 {
-                    Circle().fill(Theme.Palette.red).frame(width: 9, height: 9)
+                    Text("🥡")
+                        .font(.system(size: 26))
+                        .shadow(color: Theme.Palette.red.opacity(0.4), radius: 6)
                         .position(redPts.last ?? CGPoint(x: w, y: h - pad))
-                    Circle().fill(Theme.Palette.gold).frame(width: 9, height: 9)
-                        .shadow(color: Theme.Palette.gold.opacity(0.5), radius: 4)
+                        .transition(.scale.combined(with: .opacity))
+                    Text("💰")
+                        .font(.system(size: 26))
+                        .shadow(color: Theme.Palette.gold.opacity(0.5), radius: 6)
                         .position(greenPts.last ?? CGPoint(x: w, y: pad))
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
         }
@@ -138,15 +202,16 @@ struct GrowthChart: View {
     @ViewBuilder
     private func lineLayer(points: [CGPoint], color: Color,
                            width w: CGFloat, height h: CGFloat,
-                           progress: CGFloat) -> some View {
+                           progress: CGFloat,
+                           lineWidth: CGFloat = 3,
+                           fillOpacity: CGFloat = 0.28) -> some View {
         let line = smoothPath(points: points)
         let area = areaPath(points: points, width: w, height: h)
 
-        // Soft gradient under the line, masked left-to-right by progress.
         area
             .fill(
                 LinearGradient(
-                    colors: [color.opacity(0.28), color.opacity(0.0)],
+                    colors: [color.opacity(fillOpacity), color.opacity(0.0)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -160,7 +225,7 @@ struct GrowthChart: View {
         line
             .trim(from: 0, to: progress)
             .stroke(color,
-                    style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
     }
 
     private func points(for ys: [CGFloat], width w: CGFloat,
@@ -173,7 +238,6 @@ struct GrowthChart: View {
         }
     }
 
-    /// Catmull-Rom-ish smoothing through the points.
     private func smoothPath(points: [CGPoint]) -> Path {
         var path = Path()
         guard points.count > 1 else { return path }
@@ -192,7 +256,6 @@ struct GrowthChart: View {
         return path
     }
 
-    /// Closed area under the line, anchored to the bottom edge.
     private func areaPath(points: [CGPoint], width w: CGFloat,
                           height h: CGFloat) -> Path {
         var path = smoothPath(points: points)

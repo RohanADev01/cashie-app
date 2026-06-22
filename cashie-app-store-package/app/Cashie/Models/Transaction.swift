@@ -15,7 +15,7 @@ enum SpendCategory: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var emoji: String {
         switch self {
-        case .food: return "🍜"
+        case .food: return "🥡"
         case .transport: return "🚆"
         case .shopping: return "🛍"
         case .fun: return "🎉"

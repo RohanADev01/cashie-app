@@ -15,8 +15,8 @@ import SwiftUI
 struct QuickLogKeyCard: View {
     var importShortcutURL: URL? = URL(string: Config.quickLogShortcutImportURL)
     var assignStep: String = "Assign the shortcut to Back Tap or the Action Button."
-    /// When false, the numbered 1–4 steps are omitted (the setup screens render
-    /// them separately via `QuickLogStepsCard`, above the visual guide).
+    /// When true, the numbered paste-the-key steps are shown inline (used by the
+    /// Apple Pay setup screen).
     var showSteps: Bool = true
 
     @EnvironmentObject var container: AppContainer
@@ -130,7 +130,7 @@ struct QuickLogKeyCard: View {
                 .padding(.top, 2)
             }
 
-            Text("Your key is private. It can only add a spend, never read or delete your data.")
+            Text("Your key is private, do not share this with anyone.")
                 .font(AppFont.text(11))
                 .foregroundColor(Theme.Palette.inkMute)
         }
@@ -168,40 +168,6 @@ struct QuickLogKeyCard: View {
         case .unavailable:
             loadState = .unavailable
         }
-    }
-
-    private func step(_ number: String, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(number)
-                .font(AppFont.text(11, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(Theme.Palette.ink))
-            Text(text)
-                .font(AppFont.text(13))
-                .foregroundColor(Theme.Palette.ink)
-            Spacer(minLength: 0)
-        }
-    }
-}
-
-/// The numbered 1–4 setup steps (Copy key → Import → Paste → Assign), in a card
-/// of their own. Pulled out of `QuickLogKeyCard` so the setup screens can show
-/// the steps first, then the visual guide, then the key controls.
-struct QuickLogStepsCard: View {
-    var assignStep: String = "Assign the shortcut to Back Tap or the Action Button."
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            step("1", "Copy your API key.")
-            step("2", "Tap Import Shortcut, then Add Shortcut in the Shortcuts app.")
-            step("3", "Paste your API key when prompted.")
-            step("4", assignStep)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.Palette.line, lineWidth: 1))
     }
 
     private func step(_ number: String, _ text: String) -> some View {

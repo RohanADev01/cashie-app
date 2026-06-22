@@ -1,13 +1,18 @@
 import SwiftUI
 
+/// First screen after the paywall. Celebrates that they're in and captures
+/// their first name in the same step, so post-paywall setup starts on the
+/// name input and not a roadmap they don't need to read.
 struct WelcomeInScreen: View {
     @EnvironmentObject var container: AppContainer
+    @State private var name: String = ""
+    @FocusState private var nameFocused: Bool
 
-    var body: some View {
-        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .nameInput) }
+    private var trimmed: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var baseBody: some View {
+    var body: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             ConfettiBackground()
@@ -30,48 +35,57 @@ struct WelcomeInScreen: View {
 
                 EmphasizedHeadline(
                     raw: "<em>You're in.</em>",
-                    font: AppFont.display(48, weight: .bold)
+                    font: AppFont.display(44, weight: .bold)
                 )
                 .padding(.top, 8)
 
-                Text("Last 90 seconds. Three quick wins.")
+                Text("First, what should we call you?")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
 
-                VStack(spacing: 8) {
-                    step("01", "Grant 2 permissions")
-                    step("02", "Set up Quick Log")
-                    step("03", "Log your first spend")
-                }
-                .padding(.top, 24)
+                TextField("Your first name", text: $name)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .focused($nameFocused)
+                    .font(AppFont.text(20, weight: .semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Theme.Palette.bgCream))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(
+                                trimmed.isEmpty ? Theme.Palette.line : Theme.Palette.gold,
+                                lineWidth: 1
+                            )
+                    )
+                    .submitLabel(.done)
+                    .onSubmit(commit)
+                    .padding(.top, 18)
 
                 Spacer()
 
-                PrimaryButton(title: "Let's go") {
-                    container.advanceOnboarding(to: .nameInput)
-                }
+                PrimaryButton(title: "That's me") { commit() }
+                    .opacity(trimmed.isEmpty ? 0.55 : 1)
+                    .disabled(trimmed.isEmpty)
             }
             .padding(.horizontal, 28)
             .padding(.top, 70)
             .padding(.bottom, 28)
         }
+        .onAppear {
+            if container.user.hasName {
+                name = container.user.firstName
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                nameFocused = true
+            }
+        }
     }
 
-    private func step(_ num: String, _ label: String) -> some View {
-        HStack(spacing: 14) {
-            Text(num)
-                .font(AppFont.text(11, weight: .semibold))
-                .tracking(0.5)
-                .foregroundColor(Theme.Palette.gold)
-            Text(label)
-                .font(AppFont.callout)
-                .foregroundColor(Theme.Palette.ink)
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.Palette.bgCream))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.Palette.line, lineWidth: 1))
+    private func commit() {
+        guard !trimmed.isEmpty else { return }
+        container.user.firstName = String(trimmed.prefix(40))
+        container.advanceOnboarding(to: .permissions)
     }
 }
 

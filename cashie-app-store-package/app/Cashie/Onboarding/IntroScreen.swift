@@ -24,7 +24,7 @@ struct IntroScreen: View {
                     font: AppFont.display(40, weight: .bold)
                 )
 
-                Text("Five honest questions. No bank login, no credit pull.")
+                Text("Quick 5 second quiz to learn your habits")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
                     .padding(.top, 4)
@@ -40,8 +40,8 @@ struct IntroScreen: View {
 
                 VStack(alignment: .leading, spacing: 16) {
                     bullet("✦", "Find your hidden patterns")
-                    bullet("✓", "Meet your money type")
-                    bullet("→", "See what it's quietly costing")
+                    bullet("✓", "Find your money type")
+                    bullet("→", "See what it's costing you")
                 }
                 .padding(.top, 18)
 

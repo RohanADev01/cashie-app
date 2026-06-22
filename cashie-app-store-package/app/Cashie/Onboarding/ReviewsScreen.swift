@@ -1,31 +1,17 @@
 import SwiftUI
-import StoreKit
 
 /// A minimal rating ask shown between SocialProof and Paywall, styled like the
 /// feature tour: one centered visual (five stars) under a short headline.
 ///
-/// Apple's in-app rating prompt (`requestReview`) is fire-and-forget: it has no
-/// completion callback, so we can't know whether the user rated or tapped "Not
-/// Now", and iOS rate-limits it (~3x/year) so it may not appear at all.
-///
-/// Because of that, tapping a star or "Rate Cashie" only *opens* the prompt; it
-/// does NOT advance. Once the prompt has been requested the CTA turns into
-/// "Continue", so moving on is always a separate, explicit tap the user makes
-/// after they've dealt with (or dismissed) the rating modal. Full-screen
-/// tap-to-continue is off here so a stray tap can't skip past the rating.
+/// We deep-link to the App Store write-review URL rather than calling Apple's
+/// in-app `requestReview`, because `requestReview` is a silent no-op in
+/// TestFlight (Apple disables it there) and is also rate-limited to ~3 shows
+/// per 365 days on App Store builds, with no callback either way. The deep
+/// link works in every build and never lies about what just happened.
 struct ReviewsScreen: View {
     @EnvironmentObject var container: AppContainer
-    @Environment(\.requestReview) private var requestReview
-
-    /// Set once the native prompt has been requested. Flips the CTA from
-    /// "Rate Cashie" (opens the prompt) to "Continue" (advances).
-    @State private var hasRequested = false
 
     var body: some View {
-        baseBody
-    }
-
-    private var baseBody: some View {
         ZStack {
             Theme.Palette.bg.ignoresSafeArea()
             GoldBlob(alignment: .topTrailing, size: 360, intensity: 0.10).ignoresSafeArea()
@@ -53,7 +39,7 @@ struct ReviewsScreen: View {
                     )
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    Text(supportingText)
+                    Text("Tap the stars to rate Cashie on the App Store. It takes a second and really helps.")
                         .font(AppFont.callout)
                         .foregroundColor(Theme.Palette.inkSoft)
                         .multilineTextAlignment(.center)
@@ -62,33 +48,26 @@ struct ReviewsScreen: View {
 
                 Spacer(minLength: 8)
 
-                PrimaryButton(title: hasRequested ? "Continue" : "Rate Cashie") {
-                    if hasRequested {
-                        advance()
-                    } else {
-                        requestRating()
-                    }
+                PrimaryButton(title: "Rate Cashie") { rate() }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 6)
+
+                GhostButton(title: "Not now") {
+                    container.advanceOnboarding(to: .contrast)
                 }
                 .padding(.horizontal, 28)
-                .padding(.top, 6)
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
             }
             .padding(.top, 8)
         }
     }
 
-    private var supportingText: String {
-        hasRequested
-            ? "Thanks for the love! Tap continue when you're ready."
-            : "Tap the stars to rate Cashie on the App Store. It takes a second and really helps."
-    }
-
-    /// Five large, tappable stars. Tapping any of them opens Apple's native
-    /// rating prompt (same as the button); it does not advance on its own.
+    /// Five large, tappable stars. Tapping any of them opens the App Store
+    /// write-review URL, same as the primary button.
     private var stars: some View {
         HStack(spacing: 12) {
             ForEach(0..<5, id: \.self) { _ in
-                Button { requestRating() } label: {
+                Button { rate() } label: {
                     Image(systemName: "star.fill")
                         .font(.system(size: 40, weight: .semibold))
                         .foregroundColor(Color(hex: 0xF5B700))
@@ -98,17 +77,15 @@ struct ReviewsScreen: View {
         }
     }
 
-    /// Opens Apple's native in-app rating prompt and flips the CTA to "Continue".
-    /// We never auto-advance: the prompt has no callback, so the user moves on
-    /// themselves once they've rated or dismissed it. iOS may suppress the prompt
-    /// (rate-limited), in which case the CTA still becomes "Continue" so the user
-    /// is never stuck.
-    private func requestRating() {
-        requestReview()
-        withAnimation(Theme.Motion.snap) { hasRequested = true }
-    }
-
-    private func advance() {
+    /// Opens the App Store write-review URL (if we have the numeric Apple ID)
+    /// and advances to the next onboarding step. The advance happens whether
+    /// or not the link opens, so an empty `appStoreID` doesn't trap the user.
+    private func rate() {
+        let id = Config.appStoreID
+        if !id.isEmpty,
+           let url = URL(string: "https://apps.apple.com/app/id\(id)?action=write-review") {
+            UIApplication.shared.open(url)
+        }
         container.advanceOnboarding(to: .contrast)
     }
 }

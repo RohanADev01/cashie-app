@@ -5,7 +5,7 @@ struct WelcomeScreen: View {
     @State private var coinFloat: CGFloat = 0
 
     var body: some View {
-        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .relatability) }
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .intro) }
     }
 
     private var baseBody: some View {
@@ -49,7 +49,7 @@ struct WelcomeScreen: View {
                 Spacer()
 
                 PrimaryButton(title: "Find my money type") {
-                    container.advanceOnboarding(to: .relatability)
+                    container.advanceOnboarding(to: .intro)
                 }
             }
             .padding(.horizontal, 28)

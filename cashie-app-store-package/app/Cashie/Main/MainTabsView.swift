@@ -118,10 +118,6 @@ private struct TabBar: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 10)
             .padding(.bottom, 18)
-            .background(
-                Theme.Palette.pageBottom
-                    .overlay(Rectangle().fill(Theme.Palette.lineSoft).frame(height: 1), alignment: .top)
-            )
 
             Button(action: onQuickLog) {
                 ZStack {

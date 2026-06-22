@@ -18,17 +18,17 @@ struct FeatureTourScreen: View {
 
     private let features: [Feature] = [
         Feature(kicker: "Effortless",
-                headline: "Log a spend in <em>two seconds</em>.",
-                sub: "Tap the back of your phone. That's the whole habit."),
+                headline: "Log a spend in <em>two seconds</em>",
+                sub: "Quicker than opening your bank app"),
         Feature(kicker: "Stay in control",
-                headline: "Always know what's <em>safe to spend</em>.",
-                sub: "One clear number, updated the moment you log."),
+                headline: "Always know what's <em>safe to spend</em>",
+                sub: "Updates the moment you log"),
         Feature(kicker: "See it all",
-                headline: "Watch exactly <em>where it goes</em>.",
-                sub: "Your week, wrapped into insights you'll actually use."),
+                headline: "Watch exactly <em>where it goes</em>",
+                sub: "Find out what you spend on the most"),
         Feature(kicker: "Level up",
-                headline: "Every log earns <em>real progress</em>.",
-                sub: "Climb from Bronze to Legendary as you track your money."),
+                headline: "Every log earns <em>real progress</em>",
+                sub: "Climb from Bronze to Legendary"),
     ]
 
     var body: some View {

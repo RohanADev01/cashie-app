@@ -5,7 +5,7 @@ struct PainScreen: View {
     @EnvironmentObject var state: OnboardingState
 
     var body: some View {
-        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .socialProof) }
+        baseBody.tapAnywhereToContinue { container.advanceOnboarding(to: .quickLogIntro) }
     }
 
     private var baseBody: some View {
@@ -22,14 +22,21 @@ struct PainScreen: View {
                     .foregroundColor(Theme.Palette.inkSoft)
 
                 EmphasizedHeadline(
-                    raw: "You're losing about <em>\(formatted)</em> a year.",
+                    raw: "People with your habits often overspend about <em>\(formatted)</em> a year",
                     font: AppFont.display(34, weight: .bold),
                     emColor: Theme.Palette.red
                 )
 
-                Text("Across five years that's \(Money.format(state.selectedArchetype.painYearly * 5)), and none of it ever felt like a big deal.")
+                Text("Over five years that's \(Money.format(state.selectedArchetype.painYearly * 5)), usually from small habits that never feel like much")
                     .font(AppFont.callout)
                     .foregroundColor(Theme.Palette.inkSoft)
+
+                Text("The usual suspects")
+                    .font(AppFont.text(11, weight: .semibold))
+                    .tracking(2)
+                    .textCase(.uppercase)
+                    .foregroundColor(Theme.Palette.inkSoft)
+                    .padding(.top, 6)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 10) {
@@ -43,7 +50,7 @@ struct PainScreen: View {
                 }
 
                 PrimaryButton(title: "Show me how to stop it") {
-                    container.advanceOnboarding(to: .socialProof)
+                    container.advanceOnboarding(to: .quickLogIntro)
                 }
             }
             .padding(.horizontal, 26)

@@ -839,6 +839,7 @@ enum OnboardingStep: Equatable, Hashable {
     case reveal
     case traits
     case pain
+    case quickLogIntro
     case effort
     case socialProof
     case reviews
@@ -869,6 +870,7 @@ extension OnboardingStep {
         case .reveal: return "reveal"
         case .traits: return "traits"
         case .pain: return "pain"
+        case .quickLogIntro: return "quickLogIntro"
         case .effort: return "effort"
         case .socialProof: return "socialProof"
         case .reviews: return "reviews"
@@ -900,6 +902,7 @@ extension OnboardingStep {
         case "reveal": self = .reveal
         case "traits": self = .traits
         case "pain": self = .pain
+        case "quickLogIntro": self = .quickLogIntro
         case "effort": self = .effort
         case "socialProof": self = .socialProof
         case "reviews": self = .reviews
@@ -931,6 +934,7 @@ extension OnboardingStep {
         case .reveal: return 9
         case .traits: return 10
         case .pain: return 11
+        case .quickLogIntro: return 12
         case .effort: return 13
         case .socialProof: return 14
         case .reviews: return 15
@@ -950,9 +954,21 @@ extension OnboardingStep {
     }
 
     /// Where to resume after a relaunch: a half-finished quiz restarts from the
-    /// first question; every other step resumes in place.
+    /// first question; retired steps forward to whatever replaced them in the
+    /// current flow; every other step resumes in place.
+    ///
+    /// Retired forwards:
+    /// - `.backTapIntro` → `.backTapTeaser` (intro screen merged into the teaser)
+    /// - `.relatability` → `.intro` (the 4-page Feature Tour was removed)
+    /// - `.reviews` → `.contrast` (rating ask moved post-activation)
+    /// - `.nameInput` → `.permissions` (name capture merged into `.welcomeIn`)
     var resumeDestination: OnboardingStep {
         if case .quiz = self { return .quiz(1) }
+        if case .backTapIntro = self { return .backTapTeaser }
+        if case .relatability = self { return .intro }
+        if case .reviews = self { return .paywall }
+        if case .contrast = self { return .paywall }
+        if case .nameInput = self { return .permissions }
         return self
     }
 }
